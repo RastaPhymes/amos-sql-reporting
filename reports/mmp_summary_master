@@ -20,6 +20,7 @@
 		q.msg_code,
 		q.taskcard_zone,
 		q.customized_zone,
+		q.zone,
 		ARRAY_TO_STRING(
     		ARRAY(
         	SELECT DISTINCT TRIM(x)
@@ -38,8 +39,7 @@
     	),
     	'; '
 		) AS reference,
-		q.zone,
-	    q.task_special_code,
+		q.task_special_code,
 		q.special,
 		(
     		SELECT STRING_AGG(DISTINCT TRIM(val), '; ' ORDER BY TRIM(val))
