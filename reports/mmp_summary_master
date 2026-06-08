@@ -34,6 +34,8 @@
     		WHEN 'T' THEN 'Taskcard Controlled'
     		ELSE q.single_running
 		END AS single_running,
+		q.mpdno,
+		q.mrbno,
 		q.task_type_code,
 		q.msg_code,
 		q.taskcard_zone,
@@ -354,6 +356,8 @@ END AS status,
 			) AS reference_link_customized,
 	        mt.taskcardno,
 	        mtv.single_running,
+			STRING_AGG(DISTINCT mtmpd.mpdno, '; ') AS mpdno,
+			STRING_AGG(DISTINCT mtnrb.mrbno, '; ') AS mrbno,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
 	        mt.taskcardno_i,
 	        mtv.taskcard_verno_i,
@@ -457,6 +461,12 @@ END AS status,
 	
 	    JOIN msc_taskcard_version mtv
 	        ON mmt.taskcard_verno_i = mtv.taskcard_verno_i
+
+		LEFT JOIN msc_task_mpd mtmpd
+    	ON mtv.taskcard_verno_i = mtmpd.taskcard_verno_i
+
+		LEFT JOIN msc_task_mrb mtmrb
+    	ON mtv.taskcard_verno_i = mtmrb.taskcard_verno_i
 
 		LEFT JOIN db_link dbl_main
     	ON dbl_main.source_type = 'TCLS'
