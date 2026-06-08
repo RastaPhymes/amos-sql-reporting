@@ -20,6 +20,12 @@
 		q.customized_zone,
 		q.zone,
 	    q.task_special_code,
+		q.special,
+		CONCAT_WS(
+    		'; ',
+    		q.task_special_code,
+    		q.special
+		) AS combined_special,
 	    q.taskcardno_i,
 	    q.taskcard_verno_i,
 	    q.title,
@@ -73,7 +79,6 @@
 	    q.effectivity_title,
 	    q.aircraft_mission_config,
 	    q.aircraft_operator,
-	    q.special,
 		q.applicability,
 	    q.dimension_group_name,
 	    q.is_customized_effectivity,
