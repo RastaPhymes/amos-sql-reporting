@@ -16,6 +16,9 @@
 		END AS single_running,
 		q.task_type_code,
 		q.msg_code,
+		q.taskcard_zone,
+		q.customized_zone,
+		q.zone,
 	    q.task_special_code,
 	    q.taskcardno_i,
 	    q.taskcard_verno_i,
@@ -278,6 +281,13 @@ END AS status,
 	        STRING_AGG(DISTINCT msc_sec.section_code, '; ') AS section_code,
 			STRING_AGG(DISTINCT mtc.typecode, '; ') AS task_type_code,
 			STRING_AGG(DISTINCT mmc.msgno, '; ') AS msg_code,
+			STRING_AGG(DISTINCT mrz.zone, '; ') AS taskcard_zone,
+			STRING_AGG(DISTINCT zcl_efl.zone, '; ') AS customized_zone,
+			CASE
+    			WHEN COUNT(DISTINCT zcl_efl.zone) > 0
+    			THEN STRING_AGG(DISTINCT zcl_efl.zone, '; ')
+    			ELSE STRING_AGG(DISTINCT mrz.zone, '; ')
+			END AS zone,
 	        mt.taskcardno,
 	        mtv.single_running,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
@@ -407,6 +417,9 @@ END AS status,
 
 		LEFT JOIN msc_msg_code mmc
     		ON mtm.msgno_i = mmc.msgno_i
+
+		LEFT JOIN msc_requirement_zone mrz
+    		ON mtv.taskcard_verno_i = mrz.taskcard_verno_i
 	
 	    LEFT JOIN msc_task_special mtsp
 	        ON mtv.taskcard_verno_i = mtsp.taskcard_verno_i
@@ -449,6 +462,10 @@ END AS status,
 	
 	    LEFT JOIN event_template et_efl
 	        ON wtl_efl.wtno_i = et_efl.wtno_i
+
+		LEFT JOIN zone_code_link zcl_efl
+    		ON zcl_efl.source_type = 'WO'
+   			AND zcl_efl.source_pk = et.event_perfno_i
 	
 	    LEFT JOIN workstep_link wsl_efl
 	        ON et_efl.event_perfno_i = wsl_efl.event_perfno_i
