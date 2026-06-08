@@ -3,6 +3,26 @@
 	    q.issue_no,
 	    q.mp_revision_no,
 	    q.section_code,
+		q.reference_link_main,
+		q.reference_link_customized,
+		ARRAY_TO_STRING(
+    		ARRAY(
+        	SELECT DISTINCT TRIM(x)
+        	FROM UNNEST(
+            	STRING_TO_ARRAY(
+                	CONCAT_WS(
+                    	'; ',
+                    	q.reference_link_main,
+                    	q.reference_link_customized
+                	),
+                	'; '
+            	)
+    		) AS x
+        	WHERE TRIM(x) <> ''
+        	ORDER BY TRIM(x)
+    	),
+    	'; '
+		) AS reference,
 	    q.taskcardno,
 	    CASE q.single_running
     		WHEN 'B' THEN 'Block Taskcard'
@@ -14,9 +34,29 @@
     		WHEN 'T' THEN 'Taskcard Controlled'
     		ELSE q.single_running
 		END AS single_running,
+		q.mpdno,
+		q.mrbno,
 		q.task_type_code,
 		q.msg_code,
-	    q.task_special_code,
+		q.taskcard_zone,
+		q.customized_zone,
+		q.zone,
+		
+		q.task_special_code,
+		q.special,
+		(
+    		SELECT STRING_AGG(DISTINCT TRIM(val), '; ' ORDER BY TRIM(val))
+    		FROM UNNEST(
+        		STRING_TO_ARRAY(
+		            CONCAT_WS(';',
+        		        COALESCE(q.task_special_code, ''),
+                		COALESCE(q.special, '')
+            		),
+            		';'
+        		)
+    		) AS t(val)
+    		WHERE TRIM(val) <> ''
+		) AS combined_special,
 	    q.taskcardno_i,
 	    q.taskcard_verno_i,
 	    q.title,
@@ -70,7 +110,6 @@
 	    q.effectivity_title,
 	    q.aircraft_mission_config,
 	    q.aircraft_operator,
-	    q.special,
 		q.applicability,
 	    q.dimension_group_name,
 	    q.is_customized_effectivity,
@@ -278,8 +317,47 @@ END AS status,
 	        STRING_AGG(DISTINCT msc_sec.section_code, '; ') AS section_code,
 			STRING_AGG(DISTINCT mtc.typecode, '; ') AS task_type_code,
 			STRING_AGG(DISTINCT mmc.msgno, '; ') AS msg_code,
+			STRING_AGG(DISTINCT mrz.zone, '; ') AS taskcard_zone,
+			STRING_AGG(DISTINCT zcl_efl.zone, '; ') AS customized_zone,
+			CASE
+    			WHEN COUNT(DISTINCT zcl_efl.zone) > 0
+    			THEN STRING_AGG(DISTINCT zcl_efl.zone, '; ')
+    			ELSE STRING_AGG(DISTINCT mrz.zone, '; ')
+			END AS zone,
+			STRING_AGG(
+    			DISTINCT TRIM(
+        			CONCAT(
+            			COALESCE(dbl_main.ref_type || ': ', ''),
+            			COALESCE(dbl_main.description, ''),
+            			CASE
+                			WHEN dbl_main.link_remarks IS NOT NULL
+                     			AND dbl_main.link_remarks <> ''
+                				THEN ' ' || dbl_main.link_remarks
+                				ELSE ''
+            				END
+        				)
+    				),
+    			'; '
+			) AS reference_link_main,
+			STRING_AGG(
+   				 DISTINCT TRIM(
+        			CONCAT(
+            			COALESCE(dbl_custom.ref_type || ': ', ''),
+            			COALESCE(dbl_custom.description, ''),
+            			CASE
+                			WHEN dbl_custom.link_remarks IS NOT NULL
+                     			AND dbl_custom.link_remarks <> ''
+                				THEN ' ' || dbl_custom.link_remarks
+                				ELSE ''
+            				END
+					    )
+					),
+				'; '
+			) AS reference_link_customized,
 	        mt.taskcardno,
 	        mtv.single_running,
+			STRING_AGG(DISTINCT mtmpd.mpdno, '; ') AS mpdno,
+			STRING_AGG(DISTINCT mtmrb.mrbno, '; ') AS mrbno,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
 	        mt.taskcardno_i,
 	        mtv.taskcard_verno_i,
@@ -383,6 +461,16 @@ END AS status,
 	
 	    JOIN msc_taskcard_version mtv
 	        ON mmt.taskcard_verno_i = mtv.taskcard_verno_i
+
+		LEFT JOIN msc_task_mpd mtmpd
+    	ON mtv.taskcard_verno_i = mtmpd.taskcard_verno_i
+
+		LEFT JOIN msc_task_mrb mtmrb
+    	ON mtv.taskcard_verno_i = mtmrb.taskcard_verno_i
+
+		LEFT JOIN db_link dbl_main
+    	ON dbl_main.source_type = 'TCLS'
+   		AND dbl_main.source_pk = mtv.taskcard_verno_i::text
 	
 	    JOIN msc_taskcard mt
 	        ON mtv.taskcardno_i = mt.taskcardno_i
@@ -407,6 +495,9 @@ END AS status,
 
 		LEFT JOIN msc_msg_code mmc
     		ON mtm.msgno_i = mmc.msgno_i
+
+		LEFT JOIN msc_requirement_zone mrz
+    		ON mtv.taskcard_verno_i = mrz.taskcard_verno_i
 	
 	    LEFT JOIN msc_task_special mtsp
 	        ON mtv.taskcard_verno_i = mtsp.taskcard_verno_i
@@ -449,10 +540,18 @@ END AS status,
 	
 	    LEFT JOIN event_template et_efl
 	        ON wtl_efl.wtno_i = et_efl.wtno_i
-	
-	    LEFT JOIN workstep_link wsl_efl
+
+		LEFT JOIN workstep_link wsl_efl
 	        ON et_efl.event_perfno_i = wsl_efl.event_perfno_i
-	
+
+		LEFT JOIN db_link dbl_custom
+    		ON dbl_custom.source_type = 'WS'
+   			AND dbl_custom.source_pk = wsl_efl.descno_i::text
+
+		LEFT JOIN zone_code_link zcl_efl
+    		ON zcl_efl.source_type = 'WS'
+   			AND zcl_efl.source_pk = wsl_efl.descno_i
+	   
 	    LEFT JOIN wo_text_description wtd_efl
 	        ON wsl_efl.descno_i = wtd_efl.descno_i
 	
