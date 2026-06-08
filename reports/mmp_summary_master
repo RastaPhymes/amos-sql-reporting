@@ -4,6 +4,7 @@
 	    q.mp_revision_no,
 	    q.section_code,
 		q.reference_link_main,
+		q.reference_link_customized,
 	    q.taskcardno,
 	    CASE q.single_running
     		WHEN 'B' THEN 'Block Taskcard'
@@ -317,6 +318,21 @@ END AS status,
     				),
     			'; '
 			) AS reference_link_main,
+			STRING_AGG(
+   				 DISTINCT TRIM(
+        			CONCAT(
+            			COALESCE(dbl_custom.ref_type || ': ', ''),
+            			COALESCE(dbl_custom.description, ''),
+            			CASE
+                			WHEN dbl_custom.link_remarks IS NOT NULL
+                     			AND dbl_custom.link_remarks <> ''
+                				THEN ' ' || dbl_custom.link_remarks
+                				ELSE ''
+            				END
+					    )
+					),
+				'; '
+			) AS reference_link_customized,
 	        mt.taskcardno,
 	        mtv.single_running,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
@@ -498,6 +514,10 @@ END AS status,
 
 		LEFT JOIN workstep_link wsl_efl
 	        ON et_efl.event_perfno_i = wsl_efl.event_perfno_i
+
+		LEFT JOIN db_link dbl_custom
+    		ON dbl_custom.source_type = 'WS'
+   			AND dbl_custom.source_pk = wsl_efl.descno_i::text
 
 		LEFT JOIN zone_code_link zcl_efl
     		ON zcl_efl.source_type = 'WS'
