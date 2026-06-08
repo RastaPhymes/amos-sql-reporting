@@ -11,6 +11,7 @@
 	    q.title,
 	    q.descno_i,
 	    q.workstep_text,
+		q.eff_notes
 	    q.revision_date,
 	    q.revision_no,
 	    q.release_date,
@@ -279,6 +280,7 @@ END AS status,
 	    WHEN wsl_efl.descno_i IS NOT NULL THEN wtd_efl.text
 	    ELSE wtd_reqh.text
 	END AS workstep_text,
+			mi.eff_notes,
 	        mtv.revision_date,
 	        mtv.revision_no,
 	        mtv.release_date,
