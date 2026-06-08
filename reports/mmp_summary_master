@@ -3,6 +3,7 @@
 	    q.issue_no,
 	    q.mp_revision_no,
 	    q.section_code,
+		q.reference_link_main,
 	    q.taskcardno,
 	    CASE q.single_running
     		WHEN 'B' THEN 'Block Taskcard'
@@ -21,10 +22,18 @@
 		q.zone,
 	    q.task_special_code,
 		q.special,
-		CONCAT_WS(
-    		'; ',
-    		q.task_special_code,
-    		q.special
+		(
+    		SELECT STRING_AGG(DISTINCT TRIM(val), '; ' ORDER BY TRIM(val))
+    		FROM UNNEST(
+        		STRING_TO_ARRAY(
+		            CONCAT_WS(';',
+        		        COALESCE(q.task_special_code, ''),
+                		COALESCE(q.special, '')
+            		),
+            		';'
+        		)
+    		) AS t(val)
+    		WHERE TRIM(val) <> ''
 		) AS combined_special,
 	    q.taskcardno_i,
 	    q.taskcard_verno_i,
@@ -293,6 +302,15 @@ END AS status,
     			THEN STRING_AGG(DISTINCT zcl_efl.zone, '; ')
     			ELSE STRING_AGG(DISTINCT mrz.zone, '; ')
 			END AS zone,
+			STRING_AGG(
+    			DISTINCT CONCAT_WS(
+        		' | ',
+        		NULLIF(dbl_main.ref_type, ''),
+        		NULLIF(dbl_main.description, ''),
+        		NULLIF(dbl_main.link_remarks, '')
+   			),
+    		'; '
+			) AS reference_link_main,
 	        mt.taskcardno,
 	        mtv.single_running,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
@@ -398,6 +416,10 @@ END AS status,
 	
 	    JOIN msc_taskcard_version mtv
 	        ON mmt.taskcard_verno_i = mtv.taskcard_verno_i
+
+		LEFT JOIN db_link dbl_main
+    	ON dbl_main.source_type = 'TCLS'
+   		AND dbl_main.source_pk = mtv.taskcard_verno_i::text
 	
 	    JOIN msc_taskcard mt
 	        ON mtv.taskcardno_i = mt.taskcardno_i
