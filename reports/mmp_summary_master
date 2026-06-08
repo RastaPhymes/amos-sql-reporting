@@ -4,13 +4,25 @@
 	    q.mp_revision_no,
 	    q.section_code,
 	    q.taskcardno,
-	    q.single_running,
+	    CASE q.single_running
+    		WHEN 'B' THEN 'Block Taskcard'
+    		WHEN 'C' THEN 'Check Controlled'
+    		WHEN 'D' THEN 'Document Controlled'
+    		WHEN 'O' THEN 'On Demand'
+    		WHEN 'R' THEN 'Rotable Controlled'
+    		WHEN 'S' THEN 'Single Running'
+    		WHEN 'T' THEN 'Taskcard Controlled'
+    		ELSE q.single_running
+		END AS single_running,
+		q.task_type_code,
+		q.msg_code,
 	    q.task_special_code,
 	    q.taskcardno_i,
 	    q.taskcard_verno_i,
 	    q.title,
 	    q.descno_i,
 	    q.workstep_text,
+		q.eff_notes,
 	    q.revision_date,
 	    q.revision_no,
 	    q.release_date,
@@ -264,6 +276,8 @@ END AS status,
 	        mmi.issue_no,
 	        mmr.revision_no AS mp_revision_no,
 	        STRING_AGG(DISTINCT msc_sec.section_code, '; ') AS section_code,
+			STRING_AGG(DISTINCT mtc.typecode, '; ') AS task_type_code,
+			STRING_AGG(DISTINCT mmc.msgno, '; ') AS msg_code,
 	        mt.taskcardno,
 	        mtv.single_running,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
@@ -279,6 +293,7 @@ END AS status,
 	    WHEN wsl_efl.descno_i IS NOT NULL THEN wtd_efl.text
 	    ELSE wtd_reqh.text
 	END AS workstep_text,
+			mi.eff_notes,
 	        mtv.revision_date,
 	        mtv.revision_no,
 	        mtv.release_date,
@@ -380,6 +395,18 @@ END AS status,
 	
 	    LEFT JOIN msc_section_code msc_sec
 	        ON mts.sectionno_i = msc_sec.sectionno_i
+
+		LEFT JOIN msc_task_type mtt
+    		ON mtv.taskcard_verno_i = mtt.taskcard_verno_i
+
+		LEFT JOIN msc_type_code mtc
+    		ON mtt.typecodeno_i = mtc.typecodeno_i
+
+		LEFT JOIN msc_task_msg mtm
+    		ON mtv.taskcard_verno_i = mtm.taskcard_verno_i
+
+		LEFT JOIN msc_msg_code mmc
+    		ON mtm.msgno_i = mmc.msgno_i
 	
 	    LEFT JOIN msc_task_special mtsp
 	        ON mtv.taskcard_verno_i = mtsp.taskcard_verno_i
