@@ -303,13 +303,19 @@ END AS status,
     			ELSE STRING_AGG(DISTINCT mrz.zone, '; ')
 			END AS zone,
 			STRING_AGG(
-    			DISTINCT CONCAT_WS(
-        		' | ',
-        		NULLIF(dbl_main.ref_type, ''),
-        		NULLIF(dbl_main.description, ''),
-        		NULLIF(dbl_main.link_remarks, '')
-   			),
-    		'; '
+    			DISTINCT TRIM(
+        			CONCAT(
+            			COALESCE(dbl_main.ref_type || ': ', ''),
+            			COALESCE(dbl_main.description, ''),
+            			CASE
+                			WHEN dbl_main.link_remarks IS NOT NULL
+                     			AND dbl_main.link_remarks <> ''
+                				THEN ' ' || dbl_main.link_remarks
+                				ELSE ''
+            				END
+        				)
+    				),
+    			'; '
 			) AS reference_link_main,
 	        mt.taskcardno,
 	        mtv.single_running,
