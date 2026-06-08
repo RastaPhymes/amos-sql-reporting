@@ -15,6 +15,7 @@
     		ELSE q.single_running
 		END AS single_running,
 		q.task_type_code,
+		q.msg_code,
 	    q.task_special_code,
 	    q.taskcardno_i,
 	    q.taskcard_verno_i,
@@ -276,6 +277,7 @@ END AS status,
 	        mmr.revision_no AS mp_revision_no,
 	        STRING_AGG(DISTINCT msc_sec.section_code, '; ') AS section_code,
 			STRING_AGG(DISTINCT mtc.typecode, '; ') AS task_type_code,
+			STRING_AGG(DISTINCT mmc.msgno, '; ') AS msg_code,
 	        mt.taskcardno,
 	        mtv.single_running,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
@@ -399,6 +401,12 @@ END AS status,
 
 		LEFT JOIN msc_type_code mtc
     		ON mtt.typecodeno_i = mtc.typecodeno_i
+
+		LEFT JOIN msc_task_msg mtm
+    		ON mtv.taskcard_verno_i = mtm.taskcard_verno_i
+
+		LEFT JOIN msc_msg_code mmc
+    		ON mtm.msgno_i = mmc.msgno_i
 	
 	    LEFT JOIN msc_task_special mtsp
 	        ON mtv.taskcard_verno_i = mtsp.taskcard_verno_i
