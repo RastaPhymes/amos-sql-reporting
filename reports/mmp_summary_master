@@ -20,6 +20,24 @@
 		q.msg_code,
 		q.taskcard_zone,
 		q.customized_zone,
+		ARRAY_TO_STRING(
+    		ARRAY(
+        	SELECT DISTINCT TRIM(x)
+        	FROM UNNEST(
+            	STRING_TO_ARRAY(
+                	CONCAT_WS(
+                    	'; ',
+                    	q.reference_link_main,
+                    	q.reference_link_customized
+                	),
+                	'; '
+            	)
+    		) AS x
+        	WHERE TRIM(x) <> ''
+        	ORDER BY TRIM(x)
+    	),
+    	'; '
+		) AS reference,
 		q.zone,
 	    q.task_special_code,
 		q.special,
