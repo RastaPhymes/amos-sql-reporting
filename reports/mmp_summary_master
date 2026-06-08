@@ -4,7 +4,16 @@
 	    q.mp_revision_no,
 	    q.section_code,
 	    q.taskcardno,
-	    q.single_running,
+	    CASE q.single_running
+    		WHEN 'B' THEN 'Block Taskcard'
+    		WHEN 'C' THEN 'Check Controlled'
+    		WHEN 'D' THEN 'Document Controlled'
+    		WHEN 'O' THEN 'On Demand'
+    		WHEN 'R' THEN 'Rotable Controlled'
+    		WHEN 'S' THEN 'Single Running'
+    		WHEN 'T' THEN 'Taskcard Controlled'
+    		ELSE q.single_running
+		END AS single_running,
 	    q.task_special_code,
 	    q.taskcardno_i,
 	    q.taskcard_verno_i,
