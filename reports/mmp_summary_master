@@ -463,13 +463,13 @@ END AS status,
 	    LEFT JOIN event_template et_efl
 	        ON wtl_efl.wtno_i = et_efl.wtno_i
 
-		LEFT JOIN zone_code_link zcl_efl
-    		ON zcl_efl.source_type = 'WO'
-   			AND zcl_efl.source_pk = et.event_perfno_i
-	
-	    LEFT JOIN workstep_link wsl_efl
+		LEFT JOIN workstep_link wsl_efl
 	        ON et_efl.event_perfno_i = wsl_efl.event_perfno_i
-	
+
+		LEFT JOIN zone_code_link zcl_efl
+    		ON zcl_efl.source_type = 'WS'
+   			AND zcl_efl.source_pk = wsl_efl.descno_i
+	   
 	    LEFT JOIN wo_text_description wtd_efl
 	        ON wsl_efl.descno_i = wtd_efl.descno_i
 	
