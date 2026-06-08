@@ -14,6 +14,7 @@
     		WHEN 'T' THEN 'Taskcard Controlled'
     		ELSE q.single_running
 		END AS single_running,
+		q.task_type_code,
 	    q.task_special_code,
 	    q.taskcardno_i,
 	    q.taskcard_verno_i,
@@ -274,6 +275,7 @@ END AS status,
 	        mmi.issue_no,
 	        mmr.revision_no AS mp_revision_no,
 	        STRING_AGG(DISTINCT msc_sec.section_code, '; ') AS section_code,
+			STRING_AGG(DISTINCT mtc.typecode, '; ') AS task_type_code,
 	        mt.taskcardno,
 	        mtv.single_running,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
@@ -391,6 +393,12 @@ END AS status,
 	
 	    LEFT JOIN msc_section_code msc_sec
 	        ON mts.sectionno_i = msc_sec.sectionno_i
+
+		LEFT JOIN msc_task_type mtt
+    		ON mtv.taskcard_verno_i = mtt.taskcard_verno_i
+
+		LEFT JOIN msc_type_code mtc
+    		ON mtt.typecodeno_i = mtc.typecodeno_i
 	
 	    LEFT JOIN msc_task_special mtsp
 	        ON mtv.taskcard_verno_i = mtsp.taskcard_verno_i
