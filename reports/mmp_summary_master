@@ -11,7 +11,7 @@
 	    q.title,
 	    q.descno_i,
 	    q.workstep_text,
-		q.eff_notes
+		q.eff_notes,
 	    q.revision_date,
 	    q.revision_no,
 	    q.release_date,
