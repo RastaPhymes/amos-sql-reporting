@@ -62,21 +62,21 @@
 	    q.title,
 	    q.descno_i,
 		ROW_NUMBER() OVER (
-		    PARTITION BY
-		        q.taskcardno_i,
-		        q.itemno_i,
-		        q.effectivityno_i
-		    ORDER BY
-		        q.descno_i
+			PARTITION BY
+        		q.taskcardno_i,
+        		q.itemno_i,
+        		q.effectivityno_i
+    		ORDER BY
+        		q.descno_i
 		)::text
 		||
 		'/'
 		||
 		COUNT(*) OVER (
-		    PARTITION BY
-		        q.taskcardno_i,
-		        q.itemno_i,
-		        q.effectivityno_i
+    		PARTITION BY
+        		q.taskcardno_i,
+        		q.itemno_i,
+        		q.effectivityno_i
 		)::text AS workstep_position,
 	    q.workstep_text,
 		q.eff_notes,
@@ -282,9 +282,65 @@ END AS next_due_rule,
 
 CASE
     WHEN q.is_customized_effectivity = 'YES'
-    THEN q.EFL_STATUS
-    ELSE q.REQH_STATUS
+    THEN q.EFL_INTERVAL_GROUP_STATUS
+    ELSE q.REQH_INTERVAL_GROUP_STATUS
+END AS interval_group_status,
+
+CASE
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 0 THEN 'Standard'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 1 THEN 'Unlimited'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 2 THEN 'Terminated'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 3 THEN 'Life Limit'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 4 THEN 'Flight Length Sensitive'
+
+    ELSE 'Unknown'
 END AS status,
+
+CASE
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 1
+    THEN 'YES'
+    ELSE 'NO'
+END AS unlimited,
 	
 	    CASE
 	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_THR_CYC
@@ -305,6 +361,16 @@ END AS status,
 	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_THR_UNIT
 	        ELSE q.REQH_THR_UNIT
 	    END AS THR_UNIT,
+
+		CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_THR_CYC
+	        ELSE q.REQH_APU_THR_CYC
+	    END AS APU_THR_CYC,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_THR_HRS
+	        ELSE q.REQH_APU_THR_HRS
+	    END AS APU_THR_HRS,
 	
 	    CASE
 	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_CYC
@@ -324,7 +390,17 @@ END AS status,
 	    CASE
 	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_UNIT
 	        ELSE q.REQH_INT_UNIT
-	    END AS INT_UNIT
+	    END AS INT_UNIT,
+
+		CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_CYC
+	        ELSE q.REQH_APU_INT_CYC
+	    END AS APU_INT_CYC,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_HRS
+	        ELSE q.REQH_APU_INT_HRS
+	    END AS APU_INT_HRS
 	
 	FROM (
 	    SELECT
@@ -442,32 +518,42 @@ END AS status,
 	        STRING_AGG(DISTINCT dh_efl.docno, '; ') AS EFL_DOCNO,
 	        STRING_AGG(DISTINCT dh_reqh.docno, '; ') AS REQH_DOCNO,
 
-		MIN(tdg_efl.next_due_rule_id) AS EFL_NEXT_DUE_RULE_ID,
-		MIN(tdg_reqh.next_due_rule_id) AS REQH_NEXT_DUE_RULE_ID,
-		MIN(tcm_predef.predefined_model) AS PREDEFINED_MODEL,
+			MIN(tdg_efl.next_due_rule_id) AS EFL_NEXT_DUE_RULE_ID,
+			MIN(tdg_reqh.next_due_rule_id) AS REQH_NEXT_DUE_RULE_ID,
+			MIN(tcm_predef.predefined_model) AS PREDEFINED_MODEL,
 
-		MIN(tig_efl.status) AS EFL_STATUS,
-		MIN(tig_reqh.status) AS REQH_STATUS,
+			MAX(tig_efl.status) AS EFL_STATUS,
+			MAX(tig_reqh.status) AS REQH_STATUS,
+			MAX(tig_efl.status) AS EFL_INTERVAL_GROUP_STATUS,
+			MAX(tig_reqh.status) AS REQH_INTERVAL_GROUP_STATUS,
 	
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 1 THEN ti_efl.amount_interval END) AS EFL_THR_CYC,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 2 THEN ti_efl.amount_interval END) AS EFL_THR_HRS,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 3 THEN ti_efl.amount_interval END) AS EFL_THR_DAY,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 3 THEN ti_efl.unit END) AS EFL_THR_UNIT,
+			MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 102 THEN ti_efl.amount_interval END) AS EFL_APU_THR_CYC,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 101 THEN ti_efl.amount_interval END) AS EFL_APU_THR_HRS,
 	
 	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 1 THEN ti_efl.amount_interval END) AS EFL_INT_CYC,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 2 THEN ti_efl.amount_interval END) AS EFL_INT_HRS,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 3 THEN ti_efl.amount_interval END) AS EFL_INT_DAY,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 3 THEN ti_efl.unit END) AS EFL_INT_UNIT,
+			MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 102 THEN ti_efl.amount_interval END) AS EFL_APU_INT_CYC,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 101 THEN ti_efl.amount_interval END) AS EFL_APU_INT_HRS,
 	
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 1 THEN ti_reqh.amount_interval END) AS REQH_THR_CYC,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 2 THEN ti_reqh.amount_interval END) AS REQH_THR_HRS,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.amount_interval END) AS REQH_THR_DAY,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.unit END) AS REQH_THR_UNIT,
+			MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 102 THEN ti_reqh.amount_interval END) AS REQH_APU_THR_CYC,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 101 THEN ti_reqh.amount_interval END) AS REQH_APU_THR_HRS,
 	
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 1 THEN ti_reqh.amount_interval END) AS REQH_INT_CYC,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 2 THEN ti_reqh.amount_interval END) AS REQH_INT_HRS,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.amount_interval END) AS REQH_INT_DAY,
-	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.unit END) AS REQH_INT_UNIT
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.unit END) AS REQH_INT_UNIT,
+			MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 102 THEN ti_reqh.amount_interval END) AS REQH_APU_INT_CYC,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 101 THEN ti_reqh.amount_interval END) AS REQH_APU_INT_HRS
 	
 	    FROM msc_mp_issue mmi
 	    JOIN msc_mp_revision mmr
