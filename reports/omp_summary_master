@@ -1,7 +1,8 @@
 	SELECT
-	    q.mpno,
-	    q.issue_no,
-	    q.mp_revision_no,
+	    q.op_revisionno_i,
+		q.omp_revision_no,
+		q.mpno_i,
+		q.task_source,
 	    q.section_code,
 		q.reference_link_main,
 		q.reference_link_customized,
@@ -404,9 +405,14 @@ END AS unlimited,
 	
 	FROM (
 	    SELECT
-	        mmp.mpno,
-	        mmi.issue_no,
-	        mmr.revision_no AS mp_revision_no,
+	        mor.op_revisionno_i,
+			mor.revision_no AS omp_revision_no,
+			mt.mpno_i,
+			CASE
+		    	WHEN mt.mpno_i = 908 THEN 'OMP'
+		    	WHEN mt.mpno_i = 206 THEN 'MMP'
+		    ELSE 'OTHER'
+			END AS task_source,
 	        STRING_AGG(DISTINCT msc_sec.section_code, '; ') AS section_code,
 			STRING_AGG(DISTINCT mtc.typecode, '; ') AS task_type_code,
 			STRING_AGG(DISTINCT mmc.msgno, '; ') AS msg_code,
@@ -555,32 +561,27 @@ END AS unlimited,
 			MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 102 THEN ti_reqh.amount_interval END) AS REQH_APU_INT_CYC,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 101 THEN ti_reqh.amount_interval END) AS REQH_APU_INT_HRS
 	
-	    FROM msc_mp_issue mmi
-	    JOIN msc_mp_revision mmr
-	        ON mmi.issueno_i = mmr.issueno_i
-	
-	    JOIN msc_mprev_taskcards mmt
-	        ON mmr.revisionno_i = mmt.revisionno_i
-	
-	    JOIN msc_taskcard_version mtv
-	        ON mmt.taskcard_verno_i = mtv.taskcard_verno_i
+	    FROM msc_operator_rev_req morr
+
+		JOIN msc_taskcard_version mtv
+		    ON morr.taskcard_verno_i = mtv.taskcard_verno_i
+		
+		JOIN msc_taskcard mt
+		    ON mtv.taskcardno_i = mt.taskcardno_i
+		
+		LEFT JOIN msc_operator_revision mor
+		    ON morr.op_revisionno_i = mor.op_revisionno_i
 
 		LEFT JOIN msc_task_mpd mtmpd
-    	ON mtv.taskcard_verno_i = mtmpd.taskcard_verno_i
+    		ON mtv.taskcard_verno_i = mtmpd.taskcard_verno_i
 
 		LEFT JOIN msc_task_mrb mtmrb
-    	ON mtv.taskcard_verno_i = mtmrb.taskcard_verno_i
+    		ON mtv.taskcard_verno_i = mtmrb.taskcard_verno_i
 
 		LEFT JOIN db_link dbl_main
-    	ON dbl_main.source_type = 'TCLS'
-   		AND dbl_main.source_pk = mtv.taskcard_verno_i::text
-	
-	    JOIN msc_taskcard mt
-	        ON mtv.taskcardno_i = mt.taskcardno_i
-	
-	    JOIN msc_maintenance_program mmp
-	        ON mmi.mpno_i = mmp.mpno_i
-	
+    		ON dbl_main.source_type = 'TCLS'
+   			AND dbl_main.source_pk = mtv.taskcard_verno_i::text
+			  	
 	    LEFT JOIN msc_task_section mts
 	        ON mtv.taskcard_verno_i = mts.taskcard_verno_i
 	
@@ -728,15 +729,18 @@ END AS unlimited,
 	
 	    LEFT JOIN doc_header dh_reqh
 	        ON tbt_reqh.event_key = dh_reqh.docno_i
-	
-	    WHERE mmi.mpno_i = 206
-	      AND mmi.issueno_i = 301
-	      AND mmr.revision_no = '17'
+		
+		WHERE morr.op_revisionno_i = 11208
 	
 	    GROUP BY
-	        mmp.mpno,
-	        mmi.issue_no,
-	        mmr.revision_no,
+	       	mor.op_revisionno_i,
+			mor.revision_no,
+			mt.mpno_i,
+			CASE
+			    WHEN mt.mpno_i = 908 THEN 'OMP'
+			    WHEN mt.mpno_i = 206 THEN 'MMP'
+			    ELSE 'OTHER'
+			END,
 	        mt.taskcardno,
 	        mtv.single_running,
 	        mt.taskcardno_i,
