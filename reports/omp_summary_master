@@ -61,6 +61,23 @@
 	    q.taskcard_verno_i,
 	    q.title,
 	    q.descno_i,
+		ROW_NUMBER() OVER (
+		    PARTITION BY
+		        q.taskcardno_i,
+		        q.itemno_i,
+		        q.effectivityno_i
+		    ORDER BY
+		        q.descno_i
+		)::text
+		||
+		'/'
+		||
+		COUNT(*) OVER (
+		    PARTITION BY
+		        q.taskcardno_i,
+		        q.itemno_i,
+		        q.effectivityno_i
+		)::text AS workstep_position,
 	    q.workstep_text,
 		q.eff_notes,
 	    q.revision_date,
