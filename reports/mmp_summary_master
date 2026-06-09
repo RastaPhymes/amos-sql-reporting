@@ -282,9 +282,65 @@ END AS next_due_rule,
 
 CASE
     WHEN q.is_customized_effectivity = 'YES'
-    THEN q.EFL_STATUS
-    ELSE q.REQH_STATUS
+    THEN q.EFL_INTERVAL_GROUP_STATUS
+    ELSE q.REQH_INTERVAL_GROUP_STATUS
+END AS interval_group_status,
+
+CASE
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 0 THEN 'Standard'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 1 THEN 'Unlimited'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 2 THEN 'Terminated'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 3 THEN 'Life Limit'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 4 THEN 'Flight Length Sensitive'
+
+    ELSE 'Unknown'
 END AS status,
+
+CASE
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 1
+    THEN 'YES'
+    ELSE 'NO'
+END AS unlimited,
 	
 	    CASE
 	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_THR_CYC
@@ -462,12 +518,14 @@ END AS status,
 	        STRING_AGG(DISTINCT dh_efl.docno, '; ') AS EFL_DOCNO,
 	        STRING_AGG(DISTINCT dh_reqh.docno, '; ') AS REQH_DOCNO,
 
-		MIN(tdg_efl.next_due_rule_id) AS EFL_NEXT_DUE_RULE_ID,
-		MIN(tdg_reqh.next_due_rule_id) AS REQH_NEXT_DUE_RULE_ID,
-		MIN(tcm_predef.predefined_model) AS PREDEFINED_MODEL,
+			MIN(tdg_efl.next_due_rule_id) AS EFL_NEXT_DUE_RULE_ID,
+			MIN(tdg_reqh.next_due_rule_id) AS REQH_NEXT_DUE_RULE_ID,
+			MIN(tcm_predef.predefined_model) AS PREDEFINED_MODEL,
 
-		MIN(tig_efl.status) AS EFL_STATUS,
-		MIN(tig_reqh.status) AS REQH_STATUS,
+			MAX(tig_efl.status) AS EFL_STATUS,
+			MAX(tig_reqh.status) AS REQH_STATUS,
+			MAX(tig_efl.status) AS EFL_INTERVAL_GROUP_STATUS,
+			MAX(tig_reqh.status) AS REQH_INTERVAL_GROUP_STATUS,
 	
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 1 THEN ti_efl.amount_interval END) AS EFL_THR_CYC,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 2 THEN ti_efl.amount_interval END) AS EFL_THR_HRS,
