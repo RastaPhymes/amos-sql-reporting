@@ -305,6 +305,16 @@ END AS status,
 	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_THR_UNIT
 	        ELSE q.REQH_THR_UNIT
 	    END AS THR_UNIT,
+
+		CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_THR_CYC
+	        ELSE q.REQH_APU_THR_CYC
+	    END AS APU_THR_CYC,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_THR_HRS
+	        ELSE q.REQH_APU_THR_HRS
+	    END AS APU_THR_HRS,
 	
 	    CASE
 	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_CYC
@@ -324,7 +334,17 @@ END AS status,
 	    CASE
 	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_UNIT
 	        ELSE q.REQH_INT_UNIT
-	    END AS INT_UNIT
+	    END AS INT_UNIT,
+
+		CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_CYC
+	        ELSE q.REQH_APU_INT_CYC
+	    END AS APU_INT_CYC,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_HRS
+	        ELSE q.REQH_APU_INT_HRS
+	    END AS APU_INT_HRS
 	
 	FROM (
 	    SELECT
@@ -453,21 +473,29 @@ END AS status,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 2 THEN ti_efl.amount_interval END) AS EFL_THR_HRS,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 3 THEN ti_efl.amount_interval END) AS EFL_THR_DAY,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 3 THEN ti_efl.unit END) AS EFL_THR_UNIT,
+			MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 102 THEN ti_efl.amount_interval END) AS EFL_APU_THR_CYC,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 101 THEN ti_efl.amount_interval END) AS EFL_APU_THR_HRS,
 	
 	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 1 THEN ti_efl.amount_interval END) AS EFL_INT_CYC,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 2 THEN ti_efl.amount_interval END) AS EFL_INT_HRS,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 3 THEN ti_efl.amount_interval END) AS EFL_INT_DAY,
 	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 3 THEN ti_efl.unit END) AS EFL_INT_UNIT,
+			MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 102 THEN ti_efl.amount_interval END) AS EFL_APU_INT_CYC,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 101 THEN ti_efl.amount_interval END) AS EFL_APU_INT_HRS,
 	
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 1 THEN ti_reqh.amount_interval END) AS REQH_THR_CYC,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 2 THEN ti_reqh.amount_interval END) AS REQH_THR_HRS,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.amount_interval END) AS REQH_THR_DAY,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.unit END) AS REQH_THR_UNIT,
+			MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 102 THEN ti_reqh.amount_interval END) AS REQH_APU_THR_CYC,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 101 THEN ti_reqh.amount_interval END) AS REQH_APU_THR_HRS,
 	
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 1 THEN ti_reqh.amount_interval END) AS REQH_INT_CYC,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 2 THEN ti_reqh.amount_interval END) AS REQH_INT_HRS,
 	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.amount_interval END) AS REQH_INT_DAY,
-	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.unit END) AS REQH_INT_UNIT
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.unit END) AS REQH_INT_UNIT,
+			MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 102 THEN ti_reqh.amount_interval END) AS REQH_APU_INT_CYC,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 101 THEN ti_reqh.amount_interval END) AS REQH_APU_INT_HRS
 	
 	    FROM msc_mp_issue mmi
 	    JOIN msc_mp_revision mmr
