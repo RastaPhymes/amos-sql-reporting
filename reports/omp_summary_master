@@ -632,6 +632,7 @@ END AS unlimited,
 		LEFT JOIN applicability appl
     		ON ee.effectivityno_i = appl.effectivityno_i
    			AND appl.group_type = 'MMP'
+			AND appl.group_key = mpl_omp.mpno_i_requirement
    			AND appl.applicable = 'Y'
 			AND appl.planable = 'Y'
 
@@ -744,6 +745,7 @@ END AS unlimited,
 	        ON tbt_reqh.event_key = dh_reqh.docno_i
 		
 		WHERE morr.op_revisionno_i = 11208
+  			AND appl.applicabilityno_i IS NOT NULL
 	
 	    GROUP BY
 	       	omp_mmp.mpno,
