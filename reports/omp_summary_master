@@ -413,10 +413,10 @@ END AS unlimited,
 			mor.revision_no AS omp_revision_no,
 			mt.mpno_i,
 			CASE
-		    	WHEN mt.mpno_i = 908 THEN 'OMP'
-		    	WHEN mt.mpno_i = 206 THEN 'MMP'
+		    WHEN mt.mpno_i = mpl_omp.mpno_i_operator THEN 'OMP'
+		    WHEN mt.mpno_i = mpl_omp.mpno_i_requirement THEN 'MMP'
 		    ELSE 'OTHER'
-			END AS task_source,
+				END AS task_source,
 	        STRING_AGG(DISTINCT msc_sec.section_code, '; ') AS section_code,
 			STRING_AGG(DISTINCT mtc.typecode, '; ') AS task_type_code,
 			STRING_AGG(DISTINCT mmc.msgno, '; ') AS msg_code,
@@ -752,8 +752,8 @@ END AS unlimited,
 			mor.revision_no,
 			mt.mpno_i,
 			CASE
-			    WHEN mt.mpno_i = 908 THEN 'OMP'
-			    WHEN mt.mpno_i = 206 THEN 'MMP'
+			    WHEN mt.mpno_i = mpl_omp.mpno_i_operator THEN 'OMP'
+			    WHEN mt.mpno_i = mpl_omp.mpno_i_requirement THEN 'MMP'
 			    ELSE 'OTHER'
 			END,
 	        mt.taskcardno,
