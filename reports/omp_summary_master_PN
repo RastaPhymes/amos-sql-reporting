@@ -603,6 +603,18 @@ END AS unlimited,
 		          AND mrtl2.mpno_i_operator = mpl_omp.mpno_i_operator
 		   )
 
+		LEFT JOIN requirement_link rl_part
+		    ON rl_part.source = mrtl.req_linkno_i
+		   AND rl_part.source_mimetype = 'TCREQLI'
+		   AND rl_part.target_mimetype = 'EFL'
+		
+		LEFT JOIN event_effectivity_link eel_partreq
+		    ON rl_part.target = eel_partreq.effectivity_linkno_i
+		   AND eel_partreq.event_type = 'PARTREQ'
+		
+		LEFT JOIN part_requirement pr
+		    ON eel_partreq.event_key = pr.part_requirementno_i
+
 		LEFT JOIN msc_maintenance_program omp_mmp
     		ON mpl_omp.mpno_i_operator = omp_mmp.mpno_i
 
