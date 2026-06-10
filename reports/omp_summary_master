@@ -460,7 +460,7 @@ END AS unlimited,
 				'; '
 			) AS reference_link_customized,
 	        mt.taskcardno,
-	        mtv.single_running,
+	        COALESCE(mrtl.type, mtv.single_running) AS single_running,
 			STRING_AGG(DISTINCT mtmpd.mpdno, '; ') AS mpdno,
 			STRING_AGG(DISTINCT mtmrb.mrbno, '; ') AS mrbno,
 	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
@@ -592,6 +592,16 @@ END AS unlimited,
 
 		LEFT JOIN msc_mp_link mpl_omp
     		ON mor.mp_linkno_i = mpl_omp.mp_linkno_i
+
+		LEFT JOIN msc_requirement_tc_link mrtl
+		    ON mrtl.taskcard_verno_i_mri = mtv.taskcard_verno_i
+		   AND mrtl.mpno_i_operator = mpl_omp.mpno_i_operator
+		   AND mrtl.req_linkno_i = (
+		        SELECT MAX(mrtl2.req_linkno_i)
+		        FROM msc_requirement_tc_link mrtl2
+		        WHERE mrtl2.taskcard_verno_i_mri = mtv.taskcard_verno_i
+		          AND mrtl2.mpno_i_operator = mpl_omp.mpno_i_operator
+		   )
 
 		LEFT JOIN msc_maintenance_program omp_mmp
     		ON mpl_omp.mpno_i_operator = omp_mmp.mpno_i
@@ -783,7 +793,7 @@ END AS unlimited,
 			    ELSE 'OTHER'
 			END,
 	        mt.taskcardno,
-	        mtv.single_running,
+	        COALESCE(mrtl.type, mtv.single_running),
 	        mt.taskcardno_i,
 	        mtv.taskcard_verno_i,
 	        mt.title,
