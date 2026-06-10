@@ -131,6 +131,8 @@
 	    q.aircraft_mission_config,
 	    q.aircraft_operator,
 		q.applicability,
+		q.applicability_group_type,
+		q.applicability_group_key,
 	    q.dimension_group_name,
 	    q.is_customized_effectivity,
 	
@@ -505,6 +507,18 @@ END AS unlimited,
     			'; '
     			ORDER BY ac_appl.ac_registr
 			) AS applicability,
+
+			STRING_AGG(
+			    DISTINCT appl.group_type,
+			    '; '
+			    ORDER BY appl.group_type
+			) AS applicability_group_type,
+			
+			STRING_AGG(
+			    DISTINCT appl.group_key::text,
+			    '; '
+			    ORDER BY appl.group_key::text
+			) AS applicability_group_key,
 	
 	        CASE
 	            WHEN MAX(CASE WHEN ttr_efl.timerequirementno_i IS NOT NULL THEN 1 ELSE 0 END) = 1
@@ -630,11 +644,20 @@ END AS unlimited,
 	        ON eel.effectivityno_i = ee.effectivityno_i
 
 		LEFT JOIN applicability appl
-    		ON ee.effectivityno_i = appl.effectivityno_i
-   			AND appl.group_type = 'MMP'
-			AND appl.group_key = mpl_omp.mpno_i_requirement
-   			AND appl.applicable = 'Y'
-			AND appl.planable = 'Y'
+		    ON ee.effectivityno_i = appl.effectivityno_i
+		   AND (
+		        (
+		            appl.group_type = 'MMP'
+		            AND appl.group_key = mpl_omp.mpno_i_requirement
+		        )
+		        OR
+		        (
+		            appl.group_type = 'OMP'
+		            AND appl.group_key = mpl_omp.mpno_i_operator
+		        )
+		   )
+		   AND appl.applicable = 'Y'
+		   AND appl.planable = 'Y'
 
 		LEFT JOIN aircraft ac_appl
     		ON appl.ref_key = ac_appl.aircraftno_i
