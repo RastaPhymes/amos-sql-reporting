@@ -1,6 +1,7 @@
 	SELECT
 		q.omp_mpno,	    
 		q.op_revisionno_i,
+		q.omp_issue_no,
 		q.omp_revision_no,
 		q.mpno_i,
 		q.task_source,
@@ -408,6 +409,7 @@ END AS unlimited,
 	    SELECT
 	        omp_mmp.mpno AS omp_mpno,
 			mor.op_revisionno_i,
+			omp_issue.issue_no AS omp_issue_no,
 			mor.revision_no AS omp_revision_no,
 			mt.mpno_i,
 			CASE
@@ -580,6 +582,9 @@ END AS unlimited,
 		LEFT JOIN msc_maintenance_program omp_mmp
     		ON mpl_omp.mpno_i_operator = omp_mmp.mpno_i
 
+		LEFT JOIN msc_mp_issue omp_issue
+    		ON mpl_omp.mpno_i_operator = omp_issue.mpno_i
+
 		LEFT JOIN msc_task_mpd mtmpd
     		ON mtv.taskcard_verno_i = mtmpd.taskcard_verno_i
 
@@ -743,6 +748,7 @@ END AS unlimited,
 	    GROUP BY
 	       	omp_mmp.mpno,
 			mor.op_revisionno_i,
+			omp_issue.issue_no,
 			mor.revision_no,
 			mt.mpno_i,
 			CASE
