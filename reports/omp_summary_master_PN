@@ -1,0 +1,906 @@
+	SELECT
+		q.omp_mpno,	    
+		q.op_revisionno_i,
+		q.omp_issue_no,
+		q.omp_revision_no,
+		q.mpno_i,
+		q.task_source,
+	    q.section_code,
+		q.reference_link_main,
+		q.reference_link_customized,
+		ARRAY_TO_STRING(
+    		ARRAY(
+        	SELECT DISTINCT TRIM(x)
+        	FROM UNNEST(
+            	STRING_TO_ARRAY(
+                	CONCAT_WS(
+                    	'; ',
+                    	q.reference_link_main,
+                    	q.reference_link_customized
+                	),
+                	'; '
+            	)
+    		) AS x
+        	WHERE TRIM(x) <> ''
+        	ORDER BY TRIM(x)
+    	),
+    	'; '
+		) AS reference,
+	    q.taskcardno,
+	    CASE q.single_running
+    		WHEN 'B' THEN 'Block Taskcard'
+    		WHEN 'C' THEN 'Check Controlled'
+    		WHEN 'D' THEN 'Document Controlled'
+    		WHEN 'O' THEN 'On Demand'
+    		WHEN 'R' THEN 'Rotable Controlled'
+    		WHEN 'S' THEN 'Single Running'
+    		WHEN 'T' THEN 'Taskcard Controlled'
+    		ELSE q.single_running
+		END AS single_running,
+		q.mpdno,
+		q.mrbno,
+		q.task_type_code,
+		q.msg_code,
+		q.taskcard_zone,
+		q.customized_zone,
+		q.zone,
+		
+		q.task_special_code,
+		q.special,
+		(
+    		SELECT STRING_AGG(DISTINCT TRIM(val), '; ' ORDER BY TRIM(val))
+    		FROM UNNEST(
+        		STRING_TO_ARRAY(
+		            CONCAT_WS(';',
+        		        COALESCE(q.task_special_code, ''),
+                		COALESCE(q.special, '')
+            		),
+            		';'
+        		)
+    		) AS t(val)
+    		WHERE TRIM(val) <> ''
+		) AS combined_special,
+	    q.taskcardno_i,
+	    q.taskcard_verno_i,
+	    q.title,
+	    q.descno_i,
+		ROW_NUMBER() OVER (
+			PARTITION BY
+        		q.taskcardno_i,
+        		q.itemno_i,
+        		q.effectivityno_i
+    		ORDER BY
+        		q.descno_i
+		)::text
+		||
+		'/'
+		||
+		COUNT(*) OVER (
+    		PARTITION BY
+        		q.taskcardno_i,
+        		q.itemno_i,
+        		q.effectivityno_i
+		)::text AS workstep_position,
+	    q.workstep_text,
+		q.eff_notes,
+	    q.revision_date,
+	    q.revision_no,
+	    q.release_date,
+	    q.revision_reason,
+	    q.mrb_revision_number,
+	    q.mrb_revision_date,
+	    q.mrb_revision_reason,
+	    q.itemno_i,
+	    q.event_key,
+	    q.effectivityno_i,
+	    q.higher_effectivityno_i,
+	    q.parent_effectivityno_i,
+	    q.effectivity_linkno_i,
+	    q.effectivity_status,
+	
+	    CASE
+	        WHEN e1.effectivityno_i IS NULL THEN 0
+	        WHEN e2.effectivityno_i IS NULL THEN 1
+	        WHEN e3.effectivityno_i IS NULL THEN 2
+	        WHEN e4.effectivityno_i IS NULL THEN 3
+	        WHEN e5.effectivityno_i IS NULL THEN 4
+	        WHEN e6.effectivityno_i IS NULL THEN 5
+	        WHEN e7.effectivityno_i IS NULL THEN 6
+	        WHEN e8.effectivityno_i IS NULL THEN 7
+	        WHEN e9.effectivityno_i IS NULL THEN 8
+	        WHEN e10.effectivityno_i IS NULL THEN 9
+	        WHEN e11.effectivityno_i IS NULL THEN 10
+	        WHEN e12.effectivityno_i IS NULL THEN 11
+	        WHEN e13.effectivityno_i IS NULL THEN 12
+	        WHEN e14.effectivityno_i IS NULL THEN 13
+	        WHEN e15.effectivityno_i IS NULL THEN 14
+	        WHEN e16.effectivityno_i IS NULL THEN 15
+	        WHEN e17.effectivityno_i IS NULL THEN 16
+	        WHEN e18.effectivityno_i IS NULL THEN 17
+	        WHEN e19.effectivityno_i IS NULL THEN 18
+	        WHEN e20.effectivityno_i IS NULL THEN 19
+	        ELSE 20
+	    END AS EFF_DEPTH,
+	
+	    CASE
+	        WHEN q.parent_effectivityno_i IS NOT NULL THEN 'CHILD'
+	        ELSE 'ROOT'
+	    END AS effectivity_type,
+	
+	    q.effectivity_title,
+	    q.aircraft_mission_config,
+	    q.aircraft_operator,
+		q.applicability,
+		q.applicability_group_type,
+		q.applicability_group_key,
+	    q.dimension_group_name,
+	    q.is_customized_effectivity,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INTERVALNO_I
+	        ELSE q.REQH_INTERVALNO_I
+	    END AS intervalno_i,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_BASED_ON
+	        ELSE q.REQH_BASED_ON
+	    END AS based_on,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_DOC_TYPE
+	        ELSE q.REQH_DOC_TYPE
+	    END AS doc_type,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_DOCNO
+	        ELSE q.REQH_DOCNO
+	    END AS docno,
+
+		CASE
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_NEXT_DUE_RULE_ID
+            ELSE q.REQH_NEXT_DUE_RULE_ID
+        END
+    ) = 0
+    THEN q.PREDEFINED_MODEL
+    ELSE
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_NEXT_DUE_RULE_ID
+            ELSE q.REQH_NEXT_DUE_RULE_ID
+        END
+END AS effective_next_due_rule_id,
+
+CASE
+    WHEN (
+        CASE
+            WHEN (
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+            ) = 0
+            THEN q.PREDEFINED_MODEL
+            ELSE
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+        END
+    ) = -1 THEN 'Standard'
+    WHEN (
+        CASE
+            WHEN (
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+            ) = 0
+            THEN q.PREDEFINED_MODEL
+            ELSE
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+        END
+    ) = 1 THEN 'Groundtime Extension'
+    WHEN (
+        CASE
+            WHEN (
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+            ) = 0
+            THEN q.PREDEFINED_MODEL
+            ELSE
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+        END
+    ) = 2 THEN 'Tolerance Extension'
+    WHEN (
+        CASE
+            WHEN (
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+            ) = 0
+            THEN q.PREDEFINED_MODEL
+            ELSE
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+        END
+    ) = 3 THEN 'Last Performed'
+    WHEN (
+        CASE
+            WHEN (
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+            ) = 0
+            THEN q.PREDEFINED_MODEL
+            ELSE
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+        END
+    ) = 4 THEN 'Groundtime + Tolerance Extension'
+    WHEN (
+        CASE
+            WHEN (
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+            ) = 0
+            THEN q.PREDEFINED_MODEL
+            ELSE
+                CASE
+                    WHEN q.is_customized_effectivity = 'YES'
+                    THEN q.EFL_NEXT_DUE_RULE_ID
+                    ELSE q.REQH_NEXT_DUE_RULE_ID
+                END
+        END
+    ) = 100 THEN 'Flexible'
+    ELSE 'Unknown'
+END AS next_due_rule,
+
+CASE
+    WHEN q.is_customized_effectivity = 'YES'
+    THEN q.EFL_INTERVAL_GROUP_STATUS
+    ELSE q.REQH_INTERVAL_GROUP_STATUS
+END AS interval_group_status,
+
+CASE
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 0 THEN 'Standard'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 1 THEN 'Unlimited'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 2 THEN 'Terminated'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 3 THEN 'Life Limit'
+
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 4 THEN 'Flight Length Sensitive'
+
+    ELSE 'Unknown'
+END AS status,
+
+CASE
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 1
+    THEN 'YES'
+    ELSE 'NO'
+END AS unlimited,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_THR_CYC
+	        ELSE q.REQH_THR_CYC
+	    END AS THR_CYC,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_THR_HRS
+	        ELSE q.REQH_THR_HRS
+	    END AS THR_HRS,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_THR_DAY
+	        ELSE q.REQH_THR_DAY
+	    END AS THR_DAY,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_THR_UNIT
+	        ELSE q.REQH_THR_UNIT
+	    END AS THR_UNIT,
+
+		CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_THR_CYC
+	        ELSE q.REQH_APU_THR_CYC
+	    END AS APU_THR_CYC,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_THR_HRS
+	        ELSE q.REQH_APU_THR_HRS
+	    END AS APU_THR_HRS,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_CYC
+	        ELSE q.REQH_INT_CYC
+	    END AS INT_CYC,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_HRS
+	        ELSE q.REQH_INT_HRS
+	    END AS INT_HRS,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_DAY
+	        ELSE q.REQH_INT_DAY
+	    END AS INT_DAY,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_UNIT
+	        ELSE q.REQH_INT_UNIT
+	    END AS INT_UNIT,
+
+		CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_CYC
+	        ELSE q.REQH_APU_INT_CYC
+	    END AS APU_INT_CYC,
+	
+	    CASE
+	        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_HRS
+	        ELSE q.REQH_APU_INT_HRS
+	    END AS APU_INT_HRS
+	
+	FROM (
+	    SELECT
+	        omp_mmp.mpno AS omp_mpno,
+			mor.op_revisionno_i,
+			omp_issue.issue_no AS omp_issue_no,
+			mor.revision_no AS omp_revision_no,
+			mt.mpno_i,
+			CASE
+		    WHEN mt.mpno_i = mpl_omp.mpno_i_operator THEN 'OMP'
+		    WHEN mt.mpno_i = mpl_omp.mpno_i_requirement THEN 'MMP'
+		    ELSE 'OTHER'
+				END AS task_source,
+	        STRING_AGG(DISTINCT msc_sec.section_code, '; ') AS section_code,
+			STRING_AGG(DISTINCT mtc.typecode, '; ') AS task_type_code,
+			STRING_AGG(DISTINCT mmc.msgno, '; ') AS msg_code,
+			STRING_AGG(DISTINCT mrz.zone, '; ') AS taskcard_zone,
+			STRING_AGG(DISTINCT zcl_efl.zone, '; ') AS customized_zone,
+			CASE
+    			WHEN COUNT(DISTINCT zcl_efl.zone) > 0
+    			THEN STRING_AGG(DISTINCT zcl_efl.zone, '; ')
+    			ELSE STRING_AGG(DISTINCT mrz.zone, '; ')
+			END AS zone,
+			STRING_AGG(
+    			DISTINCT TRIM(
+        			CONCAT(
+            			COALESCE(dbl_main.ref_type || ': ', ''),
+            			COALESCE(dbl_main.description, ''),
+            			CASE
+                			WHEN dbl_main.link_remarks IS NOT NULL
+                     			AND dbl_main.link_remarks <> ''
+                				THEN ' ' || dbl_main.link_remarks
+                				ELSE ''
+            				END
+        				)
+    				),
+    			'; '
+			) AS reference_link_main,
+			STRING_AGG(
+   				 DISTINCT TRIM(
+        			CONCAT(
+            			COALESCE(dbl_custom.ref_type || ': ', ''),
+            			COALESCE(dbl_custom.description, ''),
+            			CASE
+                			WHEN dbl_custom.link_remarks IS NOT NULL
+                     			AND dbl_custom.link_remarks <> ''
+                				THEN ' ' || dbl_custom.link_remarks
+                				ELSE ''
+            				END
+					    )
+					),
+				'; '
+			) AS reference_link_customized,
+	        mt.taskcardno,
+	        COALESCE(mrtl.type, mtv.single_running) AS single_running,
+			STRING_AGG(DISTINCT mtmpd.mpdno, '; ') AS mpdno,
+			STRING_AGG(DISTINCT mtmrb.mrbno, '; ') AS mrbno,
+	        STRING_AGG(DISTINCT mtsp.code, '; ') AS task_special_code,
+	        mt.taskcardno_i,
+	        mtv.taskcard_verno_i,
+	        mt.title,
+	        CASE
+	    WHEN wsl_efl.descno_i IS NOT NULL THEN wsl_efl.descno_i
+	    ELSE wsl_reqh.descno_i
+	END AS descno_i,
+	
+	CASE
+	    WHEN wsl_efl.descno_i IS NOT NULL THEN wtd_efl.text
+	    ELSE wtd_reqh.text
+	END AS workstep_text,
+			mi.eff_notes,
+	        mtv.revision_date,
+	        mtv.revision_no,
+	        mtv.release_date,
+	        mtv.revision_reason,
+	        mtv.mrb_revision_number,
+	        mtv.mrb_revision_date,
+	        mtv.mrb_revision_reason,
+	        mi.itemno_i,
+	        eel.event_key,
+	        eel.effectivityno_i,
+	        ee.higher_effectivityno_i,
+	        ee.parent_effectivityno_i,
+	        eel.effectivity_linkno_i,
+	
+	        CASE
+	            WHEN ee.status = '0' THEN 'Active'
+	            WHEN ee.status = '1' THEN 'Inactive'
+	            ELSE 'Unknown'
+	        END AS effectivity_status,
+	
+	        ee.title AS effectivity_title,
+	        amc.code AS aircraft_mission_config,
+	        adr.vendor AS aircraft_operator,
+	        STRING_AGG(DISTINCT scl.special, '; ') AS special,
+
+			STRING_AGG(
+    			DISTINCT ac_appl.ac_registr,
+    			'; '
+    			ORDER BY ac_appl.ac_registr
+			) AS applicability,
+
+			STRING_AGG(
+			    DISTINCT appl.group_type,
+			    '; '
+			    ORDER BY appl.group_type
+			) AS applicability_group_type,
+			
+			STRING_AGG(
+			    DISTINCT appl.group_key::text,
+			    '; '
+			    ORDER BY appl.group_key::text
+			) AS applicability_group_key,
+	
+	        CASE
+	            WHEN MAX(CASE WHEN ttr_efl.timerequirementno_i IS NOT NULL THEN 1 ELSE 0 END) = 1
+	            THEN STRING_AGG(DISTINCT tdg_efl.group_name, '; ')
+	            ELSE STRING_AGG(DISTINCT tdg_reqh.group_name, '; ')
+	        END AS dimension_group_name,
+	
+	        CASE
+	            WHEN MAX(CASE WHEN ttr_efl.timerequirementno_i IS NOT NULL THEN 1 ELSE 0 END) = 1
+	            THEN 'YES'
+	            ELSE 'NO'
+	        END AS is_customized_effectivity,
+	
+	        MIN(tb_efl.intervalno_i) AS EFL_INTERVALNO_I,
+	        MIN(tb_reqh.intervalno_i) AS REQH_INTERVALNO_I,
+	        MIN(tb_efl.based_on) AS EFL_BASED_ON,
+	        MIN(tb_reqh.based_on) AS REQH_BASED_ON,
+	
+	        STRING_AGG(DISTINCT dh_efl.doc_type, '; ') AS EFL_DOC_TYPE,
+	        STRING_AGG(DISTINCT dh_reqh.doc_type, '; ') AS REQH_DOC_TYPE,
+	        STRING_AGG(DISTINCT dh_efl.docno, '; ') AS EFL_DOCNO,
+	        STRING_AGG(DISTINCT dh_reqh.docno, '; ') AS REQH_DOCNO,
+
+			MIN(tdg_efl.next_due_rule_id) AS EFL_NEXT_DUE_RULE_ID,
+			MIN(tdg_reqh.next_due_rule_id) AS REQH_NEXT_DUE_RULE_ID,
+			MIN(tcm_predef.predefined_model) AS PREDEFINED_MODEL,
+
+			MAX(tig_efl.status) AS EFL_STATUS,
+			MAX(tig_reqh.status) AS REQH_STATUS,
+			MAX(tig_efl.status) AS EFL_INTERVAL_GROUP_STATUS,
+			MAX(tig_reqh.status) AS REQH_INTERVAL_GROUP_STATUS,
+	
+	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 1 THEN ti_efl.amount_interval END) AS EFL_THR_CYC,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 2 THEN ti_efl.amount_interval END) AS EFL_THR_HRS,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 3 THEN ti_efl.amount_interval END) AS EFL_THR_DAY,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 3 THEN ti_efl.unit END) AS EFL_THR_UNIT,
+			MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 102 THEN ti_efl.amount_interval END) AS EFL_APU_THR_CYC,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'W' AND ti_efl.counter_defno_i = 101 THEN ti_efl.amount_interval END) AS EFL_APU_THR_HRS,
+	
+	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 1 THEN ti_efl.amount_interval END) AS EFL_INT_CYC,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 2 THEN ti_efl.amount_interval END) AS EFL_INT_HRS,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 3 THEN ti_efl.amount_interval END) AS EFL_INT_DAY,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 3 THEN ti_efl.unit END) AS EFL_INT_UNIT,
+			MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 102 THEN ti_efl.amount_interval END) AS EFL_APU_INT_CYC,
+	        MIN(CASE WHEN ti_efl.dimension_type = 'I' AND ti_efl.counter_defno_i = 101 THEN ti_efl.amount_interval END) AS EFL_APU_INT_HRS,
+	
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 1 THEN ti_reqh.amount_interval END) AS REQH_THR_CYC,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 2 THEN ti_reqh.amount_interval END) AS REQH_THR_HRS,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.amount_interval END) AS REQH_THR_DAY,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.unit END) AS REQH_THR_UNIT,
+			MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 102 THEN ti_reqh.amount_interval END) AS REQH_APU_THR_CYC,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'W' AND ti_reqh.counter_defno_i = 101 THEN ti_reqh.amount_interval END) AS REQH_APU_THR_HRS,
+	
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 1 THEN ti_reqh.amount_interval END) AS REQH_INT_CYC,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 2 THEN ti_reqh.amount_interval END) AS REQH_INT_HRS,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.amount_interval END) AS REQH_INT_DAY,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 3 THEN ti_reqh.unit END) AS REQH_INT_UNIT,
+			MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 102 THEN ti_reqh.amount_interval END) AS REQH_APU_INT_CYC,
+	        MIN(CASE WHEN ti_reqh.dimension_type = 'I' AND ti_reqh.counter_defno_i = 101 THEN ti_reqh.amount_interval END) AS REQH_APU_INT_HRS
+	
+	    FROM msc_operator_rev_req morr
+
+		JOIN msc_taskcard_version mtv
+		    ON morr.taskcard_verno_i = mtv.taskcard_verno_i
+		
+		JOIN msc_taskcard mt
+		    ON mtv.taskcardno_i = mt.taskcardno_i
+		
+		LEFT JOIN msc_operator_revision mor
+		    ON morr.op_revisionno_i = mor.op_revisionno_i
+
+		LEFT JOIN msc_mp_link mpl_omp
+    		ON mor.mp_linkno_i = mpl_omp.mp_linkno_i
+
+		LEFT JOIN msc_requirement_tc_link mrtl
+		    ON mrtl.taskcard_verno_i_mri = mtv.taskcard_verno_i
+		   AND mrtl.mpno_i_operator = mpl_omp.mpno_i_operator
+		   AND mrtl.req_linkno_i = (
+		        SELECT MAX(mrtl2.req_linkno_i)
+		        FROM msc_requirement_tc_link mrtl2
+		        WHERE mrtl2.taskcard_verno_i_mri = mtv.taskcard_verno_i
+		          AND mrtl2.mpno_i_operator = mpl_omp.mpno_i_operator
+		   )
+
+		LEFT JOIN msc_maintenance_program omp_mmp
+    		ON mpl_omp.mpno_i_operator = omp_mmp.mpno_i
+
+		LEFT JOIN msc_mp_issue omp_issue
+    		ON mpl_omp.mpno_i_operator = omp_issue.mpno_i
+
+		LEFT JOIN msc_task_mpd mtmpd
+    		ON mtv.taskcard_verno_i = mtmpd.taskcard_verno_i
+
+		LEFT JOIN msc_task_mrb mtmrb
+    		ON mtv.taskcard_verno_i = mtmrb.taskcard_verno_i
+
+		LEFT JOIN db_link dbl_main
+    		ON dbl_main.source_type = 'TCLS'
+   			AND dbl_main.source_pk = mtv.taskcard_verno_i::text
+			  	
+	    LEFT JOIN msc_task_section mts
+	        ON mtv.taskcard_verno_i = mts.taskcard_verno_i
+	
+	    LEFT JOIN msc_section_code msc_sec
+	        ON mts.sectionno_i = msc_sec.sectionno_i
+
+		LEFT JOIN msc_task_type mtt
+    		ON mtv.taskcard_verno_i = mtt.taskcard_verno_i
+
+		LEFT JOIN msc_type_code mtc
+    		ON mtt.typecodeno_i = mtc.typecodeno_i
+
+		LEFT JOIN msc_task_msg mtm
+    		ON mtv.taskcard_verno_i = mtm.taskcard_verno_i
+
+		LEFT JOIN msc_msg_code mmc
+    		ON mtm.msgno_i = mmc.msgno_i
+
+		LEFT JOIN msc_requirement_zone mrz
+    		ON mtv.taskcard_verno_i = mrz.taskcard_verno_i
+	
+	    LEFT JOIN msc_task_special mtsp
+	        ON mtv.taskcard_verno_i = mtsp.taskcard_verno_i
+	
+	    JOIN msc_item mi
+	        ON mtv.taskcard_verno_i = mi.taskcard_verno_i
+	
+	    LEFT JOIN event_effectivity_link eel
+	        ON mi.itemno_i = eel.event_key
+	       AND eel.event_type = 'TI'
+	
+	    LEFT JOIN event_effectivity ee
+	        ON eel.effectivityno_i = ee.effectivityno_i
+
+		LEFT JOIN applicability appl
+		    ON ee.effectivityno_i = appl.effectivityno_i
+		   AND (
+		        (
+		            appl.group_type = 'MMP'
+		            AND appl.group_key = mpl_omp.mpno_i_requirement
+		        )
+		        OR
+		        (
+		            appl.group_type = 'OMP'
+		            AND appl.group_key = mpl_omp.mpno_i_operator
+		        )
+		   )
+		   AND appl.applicable = 'Y'
+		   AND appl.planable = 'Y'
+
+		LEFT JOIN aircraft ac_appl
+    		ON appl.ref_key = ac_appl.aircraftno_i
+	
+	    LEFT JOIN event_effectivity_rules eer
+	        ON eel.effectivityno_i = eer.effectivityno_i
+	
+	    LEFT JOIN address adr
+	        ON eer.aircraft_operator = adr.address_i
+	
+	    LEFT JOIN ac_mission_configuration amc
+	        ON eer.aircraft_mission_config = amc.ac_configurationno_i
+	
+	    LEFT JOIN requirement_header rh
+	        ON rh.event_type = 'TI'
+	       AND rh.event_key = mi.itemno_i
+	
+	    LEFT JOIN worktemplate_link wtl_efl
+	        ON wtl_efl.event_type = 'EFL'
+	       AND wtl_efl.event_key = eel.effectivity_linkno_i
+	
+	    LEFT JOIN event_template et_efl
+	        ON wtl_efl.wtno_i = et_efl.wtno_i
+
+		LEFT JOIN workstep_link wsl_efl
+	        ON et_efl.event_perfno_i = wsl_efl.event_perfno_i
+
+		LEFT JOIN db_link dbl_custom
+    		ON dbl_custom.source_type = 'WS'
+   			AND dbl_custom.source_pk = wsl_efl.descno_i::text
+
+		LEFT JOIN zone_code_link zcl_efl
+    		ON zcl_efl.source_type = 'WS'
+   			AND zcl_efl.source_pk = wsl_efl.descno_i
+	   
+	    LEFT JOIN wo_text_description wtd_efl
+	        ON wsl_efl.descno_i = wtd_efl.descno_i
+	
+	    LEFT JOIN worktemplate_link wtl_reqh
+	        ON wtl_reqh.event_type = 'REQH'
+	       AND wtl_reqh.event_key = rh.requirement_headerno_i
+	       AND NOT EXISTS (
+	            SELECT 1
+	            FROM worktemplate_link wtl_chk
+	            WHERE wtl_chk.event_type = 'EFL'
+	              AND wtl_chk.event_key = eel.effectivity_linkno_i
+	       )
+	
+	    LEFT JOIN event_template et_reqh
+	        ON wtl_reqh.wtno_i = et_reqh.wtno_i
+	
+	    LEFT JOIN workstep_link wsl_reqh
+	        ON et_reqh.event_perfno_i = wsl_reqh.event_perfno_i
+	
+	    LEFT JOIN wo_text_description wtd_reqh
+	        ON wsl_reqh.descno_i = wtd_reqh.descno_i
+	
+	    LEFT JOIN special_code_link scl
+	        ON scl.source_pk = COALESCE(wsl_efl.descno_i, wsl_reqh.descno_i)
+	
+	    LEFT JOIN treq_time_requirement ttr_efl
+	        ON ttr_efl.event_type = 'EFL'
+	       AND ttr_efl.event_key = eel.effectivity_linkno_i
+	
+	    LEFT JOIN treq_interval_group tig_efl
+	        ON ttr_efl.timerequirementno_i = tig_efl.timerequirementno_i
+	
+	    LEFT JOIN treq_dimension_group tdg_efl
+	        ON tig_efl.interval_groupno_i = tdg_efl.interval_groupno_i
+	
+	    LEFT JOIN treq_interval ti_efl
+	        ON tdg_efl.dimension_groupno_i = ti_efl.dimension_groupno_i
+	
+	    LEFT JOIN treq_baseline tb_efl
+	        ON ti_efl.intervalno_i = tb_efl.intervalno_i
+	
+	    LEFT JOIN treq_baseline_threshold tbt_efl
+	        ON tb_efl.baselineno_i = tbt_efl.baselineno_i
+	       AND tbt_efl.event_type = 'DO'
+	
+	    LEFT JOIN doc_header dh_efl
+	        ON tbt_efl.event_key = dh_efl.docno_i
+	
+	    LEFT JOIN treq_time_requirement ttr_reqh
+	        ON ttr_reqh.event_type = 'REQH'
+	       AND ttr_reqh.event_key = rh.requirement_headerno_i
+	
+	    LEFT JOIN treq_interval_group tig_reqh
+	        ON ttr_reqh.timerequirementno_i = tig_reqh.timerequirementno_i
+
+		LEFT JOIN treq_calculation_model tcm_predef
+			ON tcm_predef.treq_calc_modelno_i = -3
+	
+	    LEFT JOIN treq_dimension_group tdg_reqh
+	        ON tig_reqh.interval_groupno_i = tdg_reqh.interval_groupno_i
+	
+	    LEFT JOIN treq_interval ti_reqh
+	        ON tdg_reqh.dimension_groupno_i = ti_reqh.dimension_groupno_i
+	
+	    LEFT JOIN treq_baseline tb_reqh
+	        ON ti_reqh.intervalno_i = tb_reqh.intervalno_i
+	
+	    LEFT JOIN treq_baseline_threshold tbt_reqh
+	        ON tb_reqh.baselineno_i = tbt_reqh.baselineno_i
+	       AND tbt_reqh.event_type = 'DO'
+	
+	    LEFT JOIN doc_header dh_reqh
+	        ON tbt_reqh.event_key = dh_reqh.docno_i
+		
+		WHERE morr.op_revisionno_i = 11208
+  			AND appl.applicabilityno_i IS NOT NULL
+			AND adr.vendor = 'ASLB'
+	
+	    GROUP BY
+	       	omp_mmp.mpno,
+			mor.op_revisionno_i,
+			omp_issue.issue_no,
+			mor.revision_no,
+			mt.mpno_i,
+			CASE
+			    WHEN mt.mpno_i = mpl_omp.mpno_i_operator THEN 'OMP'
+			    WHEN mt.mpno_i = mpl_omp.mpno_i_requirement THEN 'MMP'
+			    ELSE 'OTHER'
+			END,
+	        mt.taskcardno,
+	        COALESCE(mrtl.type, mtv.single_running),
+	        mt.taskcardno_i,
+	        mtv.taskcard_verno_i,
+	        mt.title,
+	        CASE
+	    WHEN wsl_efl.descno_i IS NOT NULL THEN wsl_efl.descno_i
+	    ELSE wsl_reqh.descno_i
+	END,
+	
+	CASE
+	    WHEN wsl_efl.descno_i IS NOT NULL THEN wtd_efl.text
+	    ELSE wtd_reqh.text
+	END,
+	        mtv.revision_date,
+	        mtv.revision_no,
+	        mtv.release_date,
+	        mtv.revision_reason,
+	        mtv.mrb_revision_number,
+	        mtv.mrb_revision_date,
+	        mtv.mrb_revision_reason,
+	        mi.itemno_i,
+	        eel.event_key,
+	        eel.effectivityno_i,
+	        ee.higher_effectivityno_i,
+	        ee.parent_effectivityno_i,
+	        eel.effectivity_linkno_i,
+	        ee.status,
+	        ee.title,
+	        amc.code,
+	        adr.vendor
+	) q
+	
+	LEFT JOIN event_effectivity e0 ON q.effectivityno_i = e0.effectivityno_i
+	LEFT JOIN event_effectivity e1 ON e0.higher_effectivityno_i = e1.effectivityno_i
+	LEFT JOIN event_effectivity e2 ON e1.higher_effectivityno_i = e2.effectivityno_i
+	LEFT JOIN event_effectivity e3 ON e2.higher_effectivityno_i = e3.effectivityno_i
+	LEFT JOIN event_effectivity e4 ON e3.higher_effectivityno_i = e4.effectivityno_i
+	LEFT JOIN event_effectivity e5 ON e4.higher_effectivityno_i = e5.effectivityno_i
+	LEFT JOIN event_effectivity e6 ON e5.higher_effectivityno_i = e6.effectivityno_i
+	LEFT JOIN event_effectivity e7 ON e6.higher_effectivityno_i = e7.effectivityno_i
+	LEFT JOIN event_effectivity e8 ON e7.higher_effectivityno_i = e8.effectivityno_i
+	LEFT JOIN event_effectivity e9 ON e8.higher_effectivityno_i = e9.effectivityno_i
+	LEFT JOIN event_effectivity e10 ON e9.higher_effectivityno_i = e10.effectivityno_i
+	LEFT JOIN event_effectivity e11 ON e10.higher_effectivityno_i = e11.effectivityno_i
+	LEFT JOIN event_effectivity e12 ON e11.higher_effectivityno_i = e12.effectivityno_i
+	LEFT JOIN event_effectivity e13 ON e12.higher_effectivityno_i = e13.effectivityno_i
+	LEFT JOIN event_effectivity e14 ON e13.higher_effectivityno_i = e14.effectivityno_i
+	LEFT JOIN event_effectivity e15 ON e14.higher_effectivityno_i = e15.effectivityno_i
+	LEFT JOIN event_effectivity e16 ON e15.higher_effectivityno_i = e16.effectivityno_i
+	LEFT JOIN event_effectivity e17 ON e16.higher_effectivityno_i = e17.effectivityno_i
+	LEFT JOIN event_effectivity e18 ON e17.higher_effectivityno_i = e18.effectivityno_i
+	LEFT JOIN event_effectivity e19 ON e18.higher_effectivityno_i = e19.effectivityno_i
+	LEFT JOIN event_effectivity e20 ON e19.higher_effectivityno_i = e20.effectivityno_i
+	
+	LEFT JOIN event_effectivity s0
+	    ON COALESCE(q.parent_effectivityno_i, q.effectivityno_i) = s0.effectivityno_i
+	LEFT JOIN event_effectivity s1 ON s0.higher_effectivityno_i = s1.effectivityno_i
+	LEFT JOIN event_effectivity s2 ON s1.higher_effectivityno_i = s2.effectivityno_i
+	LEFT JOIN event_effectivity s3 ON s2.higher_effectivityno_i = s3.effectivityno_i
+	LEFT JOIN event_effectivity s4 ON s3.higher_effectivityno_i = s4.effectivityno_i
+	LEFT JOIN event_effectivity s5 ON s4.higher_effectivityno_i = s5.effectivityno_i
+	LEFT JOIN event_effectivity s6 ON s5.higher_effectivityno_i = s6.effectivityno_i
+	LEFT JOIN event_effectivity s7 ON s6.higher_effectivityno_i = s7.effectivityno_i
+	LEFT JOIN event_effectivity s8 ON s7.higher_effectivityno_i = s8.effectivityno_i
+	LEFT JOIN event_effectivity s9 ON s8.higher_effectivityno_i = s9.effectivityno_i
+	LEFT JOIN event_effectivity s10 ON s9.higher_effectivityno_i = s10.effectivityno_i
+	LEFT JOIN event_effectivity s11 ON s10.higher_effectivityno_i = s11.effectivityno_i
+	LEFT JOIN event_effectivity s12 ON s11.higher_effectivityno_i = s12.effectivityno_i
+	LEFT JOIN event_effectivity s13 ON s12.higher_effectivityno_i = s13.effectivityno_i
+	LEFT JOIN event_effectivity s14 ON s13.higher_effectivityno_i = s14.effectivityno_i
+	LEFT JOIN event_effectivity s15 ON s14.higher_effectivityno_i = s15.effectivityno_i
+	LEFT JOIN event_effectivity s16 ON s15.higher_effectivityno_i = s16.effectivityno_i
+	LEFT JOIN event_effectivity s17 ON s16.higher_effectivityno_i = s17.effectivityno_i
+	LEFT JOIN event_effectivity s18 ON s17.higher_effectivityno_i = s18.effectivityno_i
+	LEFT JOIN event_effectivity s19 ON s18.higher_effectivityno_i = s19.effectivityno_i
+	LEFT JOIN event_effectivity s20 ON s19.higher_effectivityno_i = s20.effectivityno_i
+	
+	ORDER BY
+	    q.taskcardno,
+	    q.itemno_i,
+	
+	EFF_DEPTH,
+	
+	    CASE
+	        WHEN s1.effectivityno_i IS NULL THEN 0
+	        WHEN s2.effectivityno_i IS NULL THEN 1
+	        WHEN s3.effectivityno_i IS NULL THEN 2
+	        WHEN s4.effectivityno_i IS NULL THEN 3
+	        WHEN s5.effectivityno_i IS NULL THEN 4
+	        WHEN s6.effectivityno_i IS NULL THEN 5
+	        WHEN s7.effectivityno_i IS NULL THEN 6
+	        WHEN s8.effectivityno_i IS NULL THEN 7
+	        WHEN s9.effectivityno_i IS NULL THEN 8
+	        WHEN s10.effectivityno_i IS NULL THEN 9
+	        WHEN s11.effectivityno_i IS NULL THEN 10
+	        WHEN s12.effectivityno_i IS NULL THEN 11
+	        WHEN s13.effectivityno_i IS NULL THEN 12
+	        WHEN s14.effectivityno_i IS NULL THEN 13
+	        WHEN s15.effectivityno_i IS NULL THEN 14
+	        WHEN s16.effectivityno_i IS NULL THEN 15
+	        WHEN s17.effectivityno_i IS NULL THEN 16
+	        WHEN s18.effectivityno_i IS NULL THEN 17
+	        WHEN s19.effectivityno_i IS NULL THEN 18
+	        WHEN s20.effectivityno_i IS NULL THEN 19
+	        ELSE 20
+	    END,
+	
+	    
+	    q.descno_i,
+	    q.effectivityno_i,
+	    q.aircraft_mission_config;
