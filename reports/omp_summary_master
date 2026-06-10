@@ -769,6 +769,7 @@ END AS unlimited,
 		
 		WHERE morr.op_revisionno_i = 11208
   			AND appl.applicabilityno_i IS NOT NULL
+			AND adr.vendor = 'ASLB'
 	
 	    GROUP BY
 	       	omp_mmp.mpno,
