@@ -134,7 +134,6 @@
 		q.debug_req_linkno_i,
 		q.debug_partreq_efl,
 		q.debug_part_requirementno_i,
-		q.debug_installed_partnos,
 		q.linked_installed_partno,
 		q.applicability_group_type,
 		q.applicability_group_key,
@@ -516,12 +515,11 @@ END AS unlimited,
 			STRING_AGG(DISTINCT mrtl.req_linkno_i::text, '; ') AS debug_req_linkno_i,
 			STRING_AGG(DISTINCT rl_part.target::text, '; ') AS debug_partreq_efl,
 			STRING_AGG(DISTINCT pr.part_requirementno_i::text, '; ') AS debug_part_requirementno_i,
-			STRING_AGG(DISTINCT pr_inst.installed_partnos,'; ') AS debug_installed_partnos,
 
 			STRING_AGG(
-   			 DISTINCT pr_inst.installed_partnos,
-  			  '; '
-    			ORDER BY pr_inst.installed_partnos
+			    DISTINCT pr_inst.partno,
+			    '; '
+			    ORDER BY pr_inst.partno
 			) AS linked_installed_partno,
 
 			STRING_AGG(
@@ -628,9 +626,9 @@ END AS unlimited,
 		    ON eel_partreq.event_key = pr.part_requirementno_i
 
 		LEFT JOIN (
-		    SELECT
+		    SELECT DISTINCT
 		        ee_pr.effectivity_headerno_i,
-		        STRING_AGG(DISTINCT r.partno, '; ' ORDER BY r.partno) AS installed_partnos
+		        TRIM(r.partno) AS partno
 		    FROM applicability a
 		
 		    JOIN event_effectivity ee_pr
@@ -643,9 +641,7 @@ END AS unlimited,
 		      AND a.group_key IS NULL
 		      AND a.ref_type = 'RO'
 		      AND a.applicable = 'Y'
-		
-		    GROUP BY
-		        ee_pr.effectivity_headerno_i
+		      AND r.partno IS NOT NULL
 		) pr_inst
 		    ON pr_inst.effectivity_headerno_i = ee_partreq.effectivity_headerno_i
 
