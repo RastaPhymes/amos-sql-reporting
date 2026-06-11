@@ -621,24 +621,35 @@ END AS unlimited,
 		    ON rl_part.target = eel_partreq.effectivity_linkno_i
 		   AND eel_partreq.event_type = 'PARTREQ'
 		
+		LEFT JOIN event_effectivity ee_partreq
+		    ON eel_partreq.effectivityno_i = ee_partreq.effectivityno_i
+		
 		LEFT JOIN part_requirement pr
 		    ON eel_partreq.event_key = pr.part_requirementno_i
 
 		LEFT JOIN (
 		    SELECT
-		        a.effectivityno_i,
+		        ee_pr.effectivity_headerno_i,
 		        STRING_AGG(DISTINCT r.partno, '; ' ORDER BY r.partno) AS installed_partnos
 		    FROM applicability a
+		
+		    JOIN event_effectivity ee_pr
+		        ON a.effectivityno_i = ee_pr.effectivityno_i
+		
 		    JOIN rotables r
 		        ON a.ref_key = r.psn
+		
 		    WHERE a.group_type = 'PARTREQ'
 		      AND a.group_key IS NULL
 		      AND a.ref_type = 'RO'
 		      AND a.applicable = 'Y'
+		
 		    GROUP BY
-		        a.effectivityno_i
+		        ee_pr.effectivity_headerno_i
 		) pr_inst
-		    ON pr_inst.effectivityno_i = eel_partreq.effectivityno_i
+		    ON pr_inst.effectivity_headerno_i = ee_partreq.effectivity_headerno_i
+
+		
 
 		LEFT JOIN msc_maintenance_program omp_mmp
     		ON mpl_omp.mpno_i_operator = omp_mmp.mpno_i
