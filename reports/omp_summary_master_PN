@@ -131,6 +131,7 @@
 	    q.aircraft_mission_config,
 	    q.aircraft_operator,
 		q.applicability,
+		q.linked_installed_partno,
 		q.applicability_group_type,
 		q.applicability_group_key,
 	    q.dimension_group_name,
@@ -509,6 +510,12 @@ END AS unlimited,
 			) AS applicability,
 
 			STRING_AGG(
+   			 DISTINCT pr_inst.installed_partnos,
+  			  '; '
+    			ORDER BY pr_inst.installed_partnos
+			) AS linked_installed_partno,
+
+			STRING_AGG(
 			    DISTINCT appl.group_type,
 			    '; '
 			    ORDER BY appl.group_type
@@ -614,6 +621,21 @@ END AS unlimited,
 		
 		LEFT JOIN part_requirement pr
 		    ON eel_partreq.event_key = pr.part_requirementno_i
+
+		LEFT JOIN (
+    SELECT
+        a.group_key,
+        STRING_AGG(DISTINCT r.partno, '; ' ORDER BY r.partno) AS installed_partnos
+    FROM applicability a
+    JOIN rotables r
+        ON a.ref_key = r.psn
+    WHERE a.group_type = 'PARTREQ'
+      AND a.ref_type = 'RO'
+      AND a.applicable = 'Y'
+    GROUP BY
+        a.group_key
+) pr_inst
+    ON pr_inst.group_key = pr.part_requirementno_i
 
 		LEFT JOIN msc_maintenance_program omp_mmp
     		ON mpl_omp.mpno_i_operator = omp_mmp.mpno_i
@@ -790,8 +812,7 @@ END AS unlimited,
 	        ON tbt_reqh.event_key = dh_reqh.docno_i
 		
 		WHERE morr.op_revisionno_i = 11208
-  			AND appl.applicabilityno_i IS NOT NULL
-			AND adr.vendor = 'ASLB'
+		AND msc_sec.section_code = 'PART 3'
 	
 	    GROUP BY
 	       	omp_mmp.mpno,
