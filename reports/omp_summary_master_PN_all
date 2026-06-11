@@ -803,28 +803,61 @@ FROM
          LEFT JOIN ac_mission_configuration amc ON eer.aircraft_mission_config = amc.ac_configurationno_i
          LEFT JOIN requirement_header rh ON rh.event_type = 'TI'
          AND rh.event_key = mi.itemno_i
-         LEFT JOIN worktemplate_link wtl_efl ON wtl_efl.event_type = 'EFL'
-         AND wtl_efl.event_key = eel.effectivity_linkno_i
-         LEFT JOIN event_template et_efl ON wtl_efl.wtno_i = et_efl.wtno_i
-         LEFT JOIN workstep_link wsl_efl ON et_efl.event_perfno_i = wsl_efl.event_perfno_i
+         LEFT JOIN (
+    SELECT DISTINCT ON (wtl.event_key, wsl.sequenceno)
+        wtl.event_key AS effectivity_linkno_i,
+        wsl.sequenceno,
+        wsl.descno_i
+    FROM worktemplate_link wtl
+
+    JOIN event_template et
+        ON wtl.wtno_i = et.wtno_i
+
+    JOIN workstep_link wsl
+        ON et.event_perfno_i = wsl.event_perfno_i
+
+    WHERE wtl.event_type = 'EFL'
+      AND wsl.descno_i IS NOT NULL
+
+    ORDER BY
+        wtl.event_key,
+        wsl.sequenceno,
+        wsl.descno_i DESC
+) wsl_efl
+    ON wsl_efl.effectivity_linkno_i = eel.effectivity_linkno_i
          LEFT JOIN db_link dbl_custom ON dbl_custom.source_type = 'WS'
          AND dbl_custom.source_pk = wsl_efl.descno_i :: text
          LEFT JOIN zone_code_link zcl_efl ON zcl_efl.source_type = 'WS'
          AND zcl_efl.source_pk = wsl_efl.descno_i
          LEFT JOIN wo_text_description wtd_efl ON wsl_efl.descno_i = wtd_efl.descno_i
-         LEFT JOIN worktemplate_link wtl_reqh ON wtl_reqh.event_type = 'REQH'
-         AND wtl_reqh.event_key = rh.requirement_headerno_i
-         AND NOT EXISTS (
-            SELECT
-               1
-            FROM
-               worktemplate_link wtl_chk
-            WHERE
-               wtl_chk.event_type = 'EFL'
-               AND wtl_chk.event_key = eel.effectivity_linkno_i
-         )
-         LEFT JOIN event_template et_reqh ON wtl_reqh.wtno_i = et_reqh.wtno_i
-         LEFT JOIN workstep_link wsl_reqh ON et_reqh.event_perfno_i = wsl_reqh.event_perfno_i
+         LEFT JOIN (
+    SELECT DISTINCT ON (wtl.event_key, wsl.sequenceno)
+        wtl.event_key AS requirement_headerno_i,
+        wsl.sequenceno,
+        wsl.descno_i
+    FROM worktemplate_link wtl
+
+    JOIN event_template et
+        ON wtl.wtno_i = et.wtno_i
+
+    JOIN workstep_link wsl
+        ON et.event_perfno_i = wsl.event_perfno_i
+
+    WHERE wtl.event_type = 'REQH'
+      AND wsl.descno_i IS NOT NULL
+
+    ORDER BY
+        wtl.event_key,
+        wsl.sequenceno,
+        wsl.descno_i DESC
+) wsl_reqh
+    ON wsl_reqh.requirement_headerno_i = rh.requirement_headerno_i
+   AND NOT EXISTS (
+        SELECT 1
+        FROM worktemplate_link wtl_chk
+        WHERE wtl_chk.event_type = 'EFL'
+          AND wtl_chk.event_key = eel.effectivity_linkno_i
+   )
          LEFT JOIN wo_text_description wtd_reqh ON wsl_reqh.descno_i = wtd_reqh.descno_i
          LEFT JOIN special_code_link scl ON scl.source_pk = COALESCE(wsl_efl.descno_i, wsl_reqh.descno_i)
          LEFT JOIN treq_time_requirement ttr_efl ON ttr_efl.event_type = 'EFL'
