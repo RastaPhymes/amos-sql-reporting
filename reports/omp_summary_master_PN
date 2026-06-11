@@ -134,6 +134,7 @@
 		q.debug_req_linkno_i,
 		q.debug_partreq_efl,
 		q.debug_part_requirementno_i,
+		q.debug_installed_partnos,
 		q.linked_installed_partno,
 		q.applicability_group_type,
 		q.applicability_group_key,
@@ -515,6 +516,7 @@ END AS unlimited,
 			STRING_AGG(DISTINCT mrtl.req_linkno_i::text, '; ') AS debug_req_linkno_i,
 			STRING_AGG(DISTINCT rl_part.target::text, '; ') AS debug_partreq_efl,
 			STRING_AGG(DISTINCT pr.part_requirementno_i::text, '; ') AS debug_part_requirementno_i,
+			STRING_AGG(DISTINCT pr_inst.installed_partnos,'; ') AS debug_installed_partnos,
 
 			STRING_AGG(
    			 DISTINCT pr_inst.installed_partnos,
@@ -635,7 +637,7 @@ END AS unlimited,
     GROUP BY
         a.group_key
 ) pr_inst
-    ON pr_inst.group_key = pr.part_requirementno_i
+    ON pr_inst.group_key::text = pr.part_requirementno_i::text
 
 		LEFT JOIN msc_maintenance_program omp_mmp
     		ON mpl_omp.mpno_i_operator = omp_mmp.mpno_i
