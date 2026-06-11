@@ -625,28 +625,6 @@ END AS unlimited,
 		LEFT JOIN part_requirement pr
 		    ON eel_partreq.event_key = pr.part_requirementno_i
 
-		LEFT JOIN (
-		    SELECT DISTINCT
-		        ee_pr.effectivity_headerno_i,
-		        TRIM(r.partno) AS partno
-		    FROM applicability a
-		
-		    JOIN event_effectivity ee_pr
-		        ON a.effectivityno_i = ee_pr.effectivityno_i
-		
-		    JOIN rotables r
-		        ON a.ref_key = r.psn
-		
-		    WHERE a.group_type = 'PARTREQ'
-		      AND a.group_key IS NULL
-		      AND a.ref_type = 'RO'
-		      AND a.applicable = 'Y'
-		      AND r.partno IS NOT NULL
-		) pr_inst
-		    ON pr_inst.effectivity_headerno_i = ee_partreq.effectivity_headerno_i
-
-		
-
 		LEFT JOIN msc_maintenance_program omp_mmp
     		ON mpl_omp.mpno_i_operator = omp_mmp.mpno_i
 
@@ -715,6 +693,29 @@ END AS unlimited,
 
 		LEFT JOIN aircraft ac_appl
     		ON appl.ref_key = ac_appl.aircraftno_i
+
+		LEFT JOIN (
+		    SELECT DISTINCT
+		        ee_pr.effectivity_headerno_i,
+		        r.ac_registr,
+		        TRIM(r.partno) AS partno
+		    FROM applicability a
+		
+		    JOIN event_effectivity ee_pr
+		        ON a.effectivityno_i = ee_pr.effectivityno_i
+		
+		    JOIN rotables r
+		        ON a.ref_key = r.psn
+		
+		    WHERE a.group_type = 'PARTREQ'
+		      AND a.group_key IS NULL
+		      AND a.ref_type = 'RO'
+		      AND a.applicable = 'Y'
+		      AND r.partno IS NOT NULL
+		      AND r.ac_registr IS NOT NULL
+		) pr_inst
+		    ON pr_inst.effectivity_headerno_i = ee_partreq.effectivity_headerno_i
+		   AND pr_inst.ac_registr = ac_appl.ac_registr
 	
 	    LEFT JOIN event_effectivity_rules eer
 	        ON eel.effectivityno_i = eer.effectivityno_i
