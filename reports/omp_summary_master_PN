@@ -131,6 +131,9 @@
 	    q.aircraft_mission_config,
 	    q.aircraft_operator,
 		q.applicability,
+		q.debug_req_linkno_i,
+		q.debug_partreq_efl,
+		q.debug_part_requirementno_i,
 		q.linked_installed_partno,
 		q.applicability_group_type,
 		q.applicability_group_key,
@@ -509,6 +512,10 @@ END AS unlimited,
     			ORDER BY ac_appl.ac_registr
 			) AS applicability,
 
+			STRING_AGG(DISTINCT mrtl.req_linkno_i::text, '; ') AS debug_req_linkno_i,
+			STRING_AGG(DISTINCT rl_part.target::text, '; ') AS debug_partreq_efl,
+			STRING_AGG(DISTINCT pr.part_requirementno_i::text, '; ') AS debug_part_requirementno_i,
+
 			STRING_AGG(
    			 DISTINCT pr_inst.installed_partnos,
   			  '; '
@@ -601,14 +608,7 @@ END AS unlimited,
     		ON mor.mp_linkno_i = mpl_omp.mp_linkno_i
 
 		LEFT JOIN msc_requirement_tc_link mrtl
-		    ON mrtl.taskcard_verno_i_mri = mtv.taskcard_verno_i
-		   AND mrtl.mpno_i_operator = mpl_omp.mpno_i_operator
-		   AND mrtl.req_linkno_i = (
-		        SELECT MAX(mrtl2.req_linkno_i)
-		        FROM msc_requirement_tc_link mrtl2
-		        WHERE mrtl2.taskcard_verno_i_mri = mtv.taskcard_verno_i
-		          AND mrtl2.mpno_i_operator = mpl_omp.mpno_i_operator
-		   )
+    		ON mrtl.req_linkno_i = morr.req_linkno_i
 
 		LEFT JOIN requirement_link rl_part
 		    ON rl_part.source = mrtl.req_linkno_i
