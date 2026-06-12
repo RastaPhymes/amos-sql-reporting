@@ -158,15 +158,46 @@ def list_break(value) -> str:
         return ""
     return re.sub(r"\s*;\s*", "\n", text)
 
-def task_description_paragraph(title, workstep_text) -> Paragraph:
+def count_list_values(value) -> int:
+    """
+    Count semicolon-separated values in a cell.
+    Example:
+    'OE-AAA; OE-BBB; OE-CCC' = 3
+    """
+    text = clean_value(value)
+
+    if not text:
+        return 0
+
+    values = [x.strip() for x in re.split(r"\s*;\s*", text) if x.strip()]
+    return len(values)
+
+
+def build_applicability_display(value, max_count: int) -> str:
+    """
+    If the cell contains the maximum number of applicability values found
+    across the full report, display ALL.
+    Otherwise display the individual values with line breaks.
+    """
+    count = count_list_values(value)
+
+    if count > 0 and count == max_count:
+        return "ALL"
+
+    return list_break(value)
+
+def task_description_paragraph(title, workstep_text, eff_notes) -> Paragraph:
     """
     Create Task Description cell:
     - title in bold
     - empty line
     - workstep_text normal
+    - empty line
+    - eff_notes at the end
     """
     title_text = clean_value(title)
     workstep = clean_value(workstep_text)
+    notes = clean_value(eff_notes)
 
     parts = []
 
@@ -181,6 +212,10 @@ def task_description_paragraph(title, workstep_text) -> Paragraph:
             parts.append("<br/><br/>" + workstep)
         else:
             parts.append(workstep)
+
+    if notes:
+        notes = html.escape(notes).replace("\n", "<br/>")
+        parts.append(notes)
 
     return Paragraph("".join(parts), STYLE_CELL)
 
@@ -422,16 +457,19 @@ def build_report_row(row) -> list:
 )
 
     # Column 6: Effectivity
-    applicability = list_break(row.get("applicability", ""))
-    eff_notes = clean_value(row.get("eff_notes", ""))
+    applicability = clean_value(row.get("applicability_display", ""))
 
-    effectivity = combine_lines(applicability, eff_notes)
+    if not applicability:
+        applicability = list_break(row.get("applicability", ""))
+
+    effectivity = applicability
 
     # Column 7: Task Description
     title = row.get("title", "")
     workstep_text = row.get("workstep_text", "")
+    eff_notes = row.get("eff_notes", "")
 
-    task_description = task_description_paragraph(title, workstep_text)
+    task_description = task_description_paragraph(title, workstep_text, eff_notes)
 
     return [
         paragraph(rev_task),
@@ -575,6 +613,19 @@ def main():
     missing = [col for col in required_columns if col not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns in Excel file: {missing}")
+    
+    # Determine maximum applicability count across the full report
+    df["applicability_count"] = df["applicability"].apply(count_list_values)
+    max_applicability_count = df["applicability_count"].max()
+
+    print(f"Maximum applicability count found: {max_applicability_count}")
+
+    # Build display value:
+    # if applicability contains the maximum number of values, show ALL
+    # otherwise show the individual values with line breaks
+    df["applicability_display"] = df["applicability"].apply(
+        lambda value: build_applicability_display(value, max_applicability_count)
+    )
 
     # Assign chapter key and title from section_code
     chapter_info = df["section_code"].apply(get_chapter_info)
