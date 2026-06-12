@@ -478,7 +478,118 @@ END AS THR,
    CASE
       WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_HRS
       ELSE q.REQH_APU_INT_HRS
-   END AS APU_INT_HRS
+   END AS APU_INT_HRS,
+   CASE
+    WHEN (
+        CASE
+            WHEN q.is_customized_effectivity = 'YES'
+            THEN q.EFL_INTERVAL_GROUP_STATUS
+            ELSE q.REQH_INTERVAL_GROUP_STATUS
+        END
+    ) = 1
+    THEN ''
+
+    ELSE
+        'I:' ||
+        COALESCE(
+            ' ' || NULLIF(
+                CONCAT_WS(
+                    '; ',
+
+                    CASE
+                        WHEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_CYC
+                                ELSE q.REQH_INT_CYC
+                            END
+                        ) IS NOT NULL
+                        THEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_CYC
+                                ELSE q.REQH_INT_CYC
+                            END
+                        )::text || ' FC'
+                    END,
+
+                    CASE
+                        WHEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_HRS
+                                ELSE q.REQH_INT_HRS
+                            END
+                        ) IS NOT NULL
+                        THEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_HRS
+                                ELSE q.REQH_INT_HRS
+                            END
+                        )::text || ' FH'
+                    END,
+
+                    CASE
+                        WHEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_DAY
+                                ELSE q.REQH_INT_DAY
+                            END
+                        ) IS NOT NULL
+                        THEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_DAY
+                                ELSE q.REQH_INT_DAY
+                            END
+                        )::text
+                        ||
+                        COALESCE(
+                            ' ' ||
+                            NULLIF(
+                                (
+                                    CASE
+                                        WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_INT_UNIT
+                                        ELSE q.REQH_INT_UNIT
+                                    END
+                                )::text,
+                                ''
+                            ),
+                            ''
+                        )
+                    END,
+
+                    CASE
+                        WHEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_CYC
+                                ELSE q.REQH_APU_INT_CYC
+                            END
+                        ) IS NOT NULL
+                        THEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_CYC
+                                ELSE q.REQH_APU_INT_CYC
+                            END
+                        )::text || ' AC'
+                    END,
+
+                    CASE
+                        WHEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_HRS
+                                ELSE q.REQH_APU_INT_HRS
+                            END
+                        ) IS NOT NULL
+                        THEN (
+                            CASE
+                                WHEN q.is_customized_effectivity = 'YES' THEN q.EFL_APU_INT_HRS
+                                ELSE q.REQH_APU_INT_HRS
+                            END
+                        )::text || ' AH'
+                    END
+                ),
+                ''
+            ),
+            ''
+        )
+END AS "INT"
 FROM
    (
       SELECT
